@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db" // Using SQLite for quick local test case management
+}
+
+// --- NEXTAUTH.JS MODELS ---
+
+model User {
+  id            Int       @id @default(autoincrement())
+  name          String?
+  email         String?   @unique
+  language      String    @default("en")
+  role          String    @default("USER")
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  accounts      Account[]
+  sessions      Session[]
+  projects      Project[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            Int
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       Int
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// --- TEST CASE MANAGEMENT MODELS ---
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  url         String?
+  logo        String?
+  createdBy   String?
+  userId      Int?
+  user        User?    @relation(fields: [userId], references: [id])
+  tables      Table[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Table {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  tableType String   @default("TEST_CASES")
+  createdBy String?
+  entries   Entry[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Entry {
+  id                 Int      @id @default(autoincrement())
+  tableId            String
+  table              Table    @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  title              String
+  description        String
+  status             String   @default("NEW")
+  assignedTo         String?
+  isDeleted          Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  username           String?
+  stepsToReproduce   String?
+  fixStatus          String?
+  result             String?
+  expectedResult     String?
+  screenshotClipName String?
+  screenshotClipUrl  String?
+}

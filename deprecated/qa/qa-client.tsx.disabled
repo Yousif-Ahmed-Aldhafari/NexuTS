@@ -1,0 +1,83 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+import { PlusCircle } from "lucide-react";
+
+import { AddProjectDialog } from "@/components/projects/add-project-dialog";
+import { Button } from "@/components/ui/button";
+
+import { DataTable } from "./data-table";
+
+type Project = { id: string; name: string };
+type Table = { id: string; name: string; projectId: string; tableType: "TEST_CASES" | "ISSUE_LOGS" };
+
+export function QAClient() {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [tables, setTables] = useState<Table[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
+
+  // Initial fetch for projects
+  useEffect(() => {
+    fetch("/api/projects")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setProjects(data);
+          setSelectedProjectId(data[0].id);
+          if (data[0].tables?.length > 0) {
+            setTables(data[0].tables);
+            setSelectedTableId(data[0].tables[0].id);
+          }
+        }
+      })
+      .catch(console.error);
+  }, []);
+
+  return (
+    <div className="flex h-full flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <div className="flex gap-2">
+          <select
+            className="h-10 w-[200px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            value={selectedProjectId || ""}
+            onChange={(e) => setSelectedProjectId(e.target.value)}
+          >
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+          <AddProjectDialog
+            creatorDisplay="Unknown"
+            onProjectAdded={() => {
+              window.location.reload();
+            }}
+            trigger={<Button variant="outline">Add Project</Button>}
+          />
+        </div>
+        <Button>
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Create New Table
+        </Button>
+      </div>
+
+      <div className="rounded-md border bg-card p-4 text-card-foreground shadow-sm">
+        {/* Tabs can go here for tables */}
+        {!selectedTableId ? (
+          <div className="flex h-full flex-col items-center justify-center gap-2">
+            <span className="text-muted-foreground">No tables in this project yet.</span>
+            <Button variant="secondary">Create your first Table</Button>
+          </div>
+        ) : (
+          <DataTable
+            tableId={selectedTableId}
+            tableType={tables.find((table) => table.id === selectedTableId)?.tableType || "TEST_CASES"}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
