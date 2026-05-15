@@ -9,7 +9,7 @@ import { AppSidebar } from "@/app/(main)/dashboard/_components/sidebar/app-sideb
 import { auth } from "@/auth";
 import { Button } from "@/components/ui/button";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { LOCALE_VALUES, translate } from "@/lib/i18n";
+import { getLocaleDirection, LOCALE_VALUES, translate } from "@/lib/i18n";
 import { SIDEBAR_COLLAPSIBLE_VALUES, SIDEBAR_VARIANT_VALUES } from "@/lib/preferences/layout";
 import { cn } from "@/lib/utils";
 import { getPreference } from "@/server/server-actions";
@@ -40,10 +40,11 @@ export default async function Layout({ children }: Readonly<{ children: ReactNod
 
   const notificationsLabel = translate(language, "nav.notifications");
   const fallbackUserName = translate(language, "common.user");
+  const sidebarSide = getLocaleDirection(language) === "rtl" ? "right" : "left";
 
   return (
     <SidebarProvider defaultOpen={defaultOpen}>
-      <AppSidebar side="right" variant={variant} collapsible={collapsible} user={session?.user} />
+      <AppSidebar side={sidebarSide} variant={variant} collapsible={collapsible} user={session?.user} />
       <SidebarInset
         className={cn(
           "w-full min-w-0 max-w-full overflow-x-hidden",

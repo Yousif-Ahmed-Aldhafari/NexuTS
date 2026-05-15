@@ -30,19 +30,21 @@ type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
 };
 
 export function AppSidebar({ ...props }: AppSidebarProps) {
-  const { sidebarVariant, sidebarCollapsible, isSynced } = usePreferencesStore(
+  const { sidebarVariant, sidebarCollapsible, language, isSynced } = usePreferencesStore(
     useShallow((s) => ({
       sidebarVariant: s.sidebarVariant,
       sidebarCollapsible: s.sidebarCollapsible,
+      language: s.language,
       isSynced: s.isSynced,
     })),
   );
 
   const variant = isSynced ? sidebarVariant : props.variant;
   const collapsible = isSynced ? sidebarCollapsible : props.collapsible;
+  const side = isSynced ? (language === "ar" ? "right" : "left") : props.side;
 
   return (
-    <Sidebar {...props} variant={variant} collapsible={collapsible}>
+    <Sidebar {...props} side={side} variant={variant} collapsible={collapsible}>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
