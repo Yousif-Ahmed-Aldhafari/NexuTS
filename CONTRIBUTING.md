@@ -1,127 +1,136 @@
-# Contributing to Studio Admin
+# Contributing to NexuTS
 
-Thanks for showing interest in improving **Studio Admin** (repo: `next-shadcn-admin-dashboard`).  
-This guide will help you set up your environment and understand how to contribute.
+Thanks for your interest in contributing to **NexuTS**.
+This document explains how to set up your environment, ship safe changes, and submit pull requests.
 
----
+## Code of Conduct
 
-## Overview
+Please be respectful and constructive in all project discussions.
 
-This project is built with **Next.js 16**, **TypeScript**, **Tailwind CSS v4**, and **Shadcn UI**.  
-The goal is to keep the codebase modular, scalable, and easy to extend.
+## Quick Start
 
----
+1. Fork the repository:
+   `https://github.com/yousifaldhafari-hue/NexuTS/fork`
+2. Clone your fork:
 
-## Project Layout
-
-We use a **colocation-based file system**. Each feature keeps its own pages, components, and logic.
-
-```
-src
-├── app               # Next.js routes (App Router)
-│   ├── (auth)        # Auth layouts & screens
-│   ├── (main)        # Main dashboard routes
-│   │   └── (dashboard)
-│   │       ├── crm
-│   │       ├── finance
-│   │       ├── default
-│   │       └── ...
-│   └── layout.tsx
-├── components        # Shared UI components
-├── hooks             # Reusable hooks
-├── lib               # Config & utilities
-├── styles            # Tailwind / theme setup
-└── types             # TypeScript definitions
-```
-
-If you’d like a more detailed example of this setup, check out the [Next Colocation Template](https://github.com/arhamkhnz/next-colocation-template), where the full structure is explained with examples.
-
----
-
-## Getting Started
-
-### Fork and Clone the Repository
-
-1. Fork the Repository
-   
-   Click [here](https://github.com/arhamkhnz/next-shadcn-admin-dashboard/fork) to fork the repository.
-
-2. Clone the Repository  
    ```bash
-   git clone https://github.com/YOUR_USERNAME/next-shadcn-admin-dashboard.git
-   ```
-   
-3. Navigate into the Project  
-   ```bash
-   cd next-shadcn-admin-dashboard
+   git clone https://github.com/YOUR_USERNAME/NexuTS.git
+   cd NexuTS
    ```
 
-4. **Install dependencies**
+3. Install dependencies:
+
    ```bash
    npm install
    ```
 
-5. **Run the dev server**
+4. Configure environment variables by creating `.env` in the project root:
+
+   ```bash
+   AUTH_SECRET="replace_with_a_long_random_secret"
+   ```
+
+   Optional:
+
+   ```bash
+   NEXT_PUBLIC_AUTOMATION_ENABLED="true"
+   ```
+
+5. Start development:
+
    ```bash
    npm run dev
    ```
-   App will be available at [http://localhost:3000](http://localhost:3000).
 
----
+App runs on `http://localhost:3000`.
 
-## Contribution Flow
+## Project Structure
 
-- Always create a new branch before working on changes:
-  ```bash
-  git checkout -b feature/my-update
-  ```
+Use these paths as a guide when deciding where to place changes:
 
-- Use clear commit messages:
-  ```bash
-  git commit -m "feat: add finance dashboard screen"
-  ```
+```text
+src/
+  app/             # App Router routes (auth, dashboard, API)
+  actions/         # Server actions and auth/session flows
+  components/      # Shared and feature UI components
+  config/          # App-level configuration
+  lib/             # Utilities, i18n, Prisma/auth helpers
+  stores/          # Client state stores
+prisma/
+  schema.prisma    # Data model
+  migrations/      # Database migrations
+```
 
-- Open a Pull Request once ready.
-- If your change adds a new UI screen or component, include a screenshot in your PR description.
+## Branch and Commit Workflow
 
----
+1. Create a branch for your work:
 
-## Where to Contribute
+   ```bash
+   git checkout -b feat/short-description
+   ```
 
-- **External Pages**: Landing pages or other non-dashboard routes → `src/app/(external)/`  
-- **Auth Screens**: Login, register, and authentication layouts → `src/app/(main)/auth/`  
-- **Dashboard Screens**: Feature dashboards like CRM, Finance, Analytics → `src/app/(main)/dashboard/`
-- **Components**: Reusable UI goes in `src/components/`  
-- **Hooks**: Custom logic goes in `src/hooks/`  
-- **Themes**: New presets under `src/styles/presets/`  
+2. Make focused changes and keep commits clear.
+3. Use conventional commit prefixes when possible:
+   - `feat:`
+   - `fix:`
+   - `refactor:`
+   - `docs:`
+   - `chore:`
 
----
+Example:
 
-## Guidelines
+```bash
+git commit -m "feat: add project filter to QA boards"
+```
 
-- Prefer **TypeScript types** over `any`
-- Husky pre-commit hooks are enabled - linting and formatting run automatically when you commit, and if there are errors the commit will be blocked until they are fixed. 
-- Follow **Shadcn UI** style & Tailwind v4 conventions
-- Keep accessibility in mind (ARIA, keyboard nav)
-- Use clear commit messages with conventional prefixes (`feat:`, `fix:`, `chore:`, etc.)
-- Avoid unnecessary dependencies — prefer existing utilities where possible
+## Quality Checks
 
----
+Run these before opening a pull request:
 
-## Submitting PRs
+```bash
+npm run format
+npm run lint
+npx tsc --noEmit
+npm run build
+```
 
-- Open a Pull Request once your changes are ready.  
-- Ensure your branch is up to date with `main` before submitting.  
-- Reference any related issue in your PR for context.
+Or run the full clean validation flow:
 
----
+```bash
+npm run validate:clean
+```
 
-## Questions & Support
+Note:
+- Husky pre-commit hooks and lint-staged run checks automatically on staged files.
+- If checks fail, fix issues and commit again.
 
-- Report bugs, suggestions, or issues via [GitHub Issues](https://github.com/arhamkhnz/next-shadcn-admin-dashboard/issues)
+## Pull Request Checklist
 
----
+Before submitting a PR, please ensure:
 
-Your contributions keep this project growing. 🚀
+- The branch is up to date with `main`.
+- Local checks pass.
+- The PR description explains what changed and why.
+- UI changes include screenshots or a short screen recording.
+- Related issues are linked when applicable.
 
-**Happy Vibe Coding!**
+## Development Guidelines
+
+- Prefer strict TypeScript types over `any`.
+- Keep components small and reusable.
+- Follow existing patterns in `src/components` and `src/lib`.
+- Preserve accessibility (semantic markup, keyboard support, ARIA where needed).
+- Avoid adding dependencies when existing utilities can solve the problem.
+- For schema changes, include Prisma migration updates.
+
+## Security
+
+If you discover a security issue, do not open a public issue with exploit details.
+Please report it privately to the maintainers first.
+
+## Questions and Support
+
+- Open a GitHub issue for bugs or feature requests:
+  `https://github.com/yousifaldhafari-hue/NexuTS/issues`
+
+Thanks for helping make NexuTS better.
