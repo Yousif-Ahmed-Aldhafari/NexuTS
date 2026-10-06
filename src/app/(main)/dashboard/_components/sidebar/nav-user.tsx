@@ -116,11 +116,11 @@ export function NavUser({
 
       <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
         <DialogContent
-          className="max-h-[90vh] w-full max-w-[calc(100vw-2rem)] overflow-y-auto overflow-x-hidden p-0 sm:max-w-5xl"
+          className="flex h-[90dvh] w-full max-w-[calc(100vw-2rem)] flex-col overflow-hidden p-0 sm:max-w-5xl"
           overlayClassName="bg-black/50 backdrop-blur-[2px]"
         >
           <DialogTitle className="sr-only">{t("common.systemSettings")}</DialogTitle>
-          <SystemSettingsContent mode="modal" tabQuery="personal-info" />
+          <SystemSettingsContent mode="modal" tabQuery="general" />
         </DialogContent>
       </Dialog>
     </>

@@ -219,3 +219,51 @@ html {
 .disable-transitions * {
   transition: none !important;
 }
+
+.settings-scrollbar {
+  --settings-scrollbar-thumb: color-mix(in oklab, var(--muted-foreground) 10%, transparent);
+  --settings-scrollbar-thumb-hover: color-mix(in oklab, var(--muted-foreground) 55%, transparent);
+  /* Inset the scrolling edge without moving the padded content, including in RTL. */
+  width: calc(100% - 24px);
+  margin-inline: 12px;
+  padding-inline: calc(var(--settings-scroll-padding) - 12px);
+}
+
+.settings-scrollbar::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.settings-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  margin-block: 24px;
+}
+
+.settings-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--settings-scrollbar-thumb);
+  background-clip: padding-box;
+  border: 3px solid transparent;
+  border-radius: 9999px;
+}
+
+.settings-scrollbar::-webkit-scrollbar-thumb:hover,
+.settings-scrollbar::-webkit-scrollbar-thumb:active {
+  background-color: var(--settings-scrollbar-thumb-hover);
+}
+
+.settings-scrollbar::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Standard scrollbar properties override WebKit styling in Chromium. */
+@supports not selector(::-webkit-scrollbar) {
+  .settings-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--settings-scrollbar-thumb) transparent;
+  }
+
+  .settings-scrollbar:hover,
+  .settings-scrollbar:active {
+    scrollbar-color: var(--settings-scrollbar-thumb-hover) transparent;
+  }
+}

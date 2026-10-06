@@ -295,7 +295,7 @@ export const arMessages = {
   "settings.verifyEmail": "التحقق من البريد الإلكتروني",
   "settings.change": "يتغير",
   "settings.changePassword": "تغيير كلمة المرور",
-  "settings.languageSection": "لغة",
+  "settings.languageSection": "اللغة",
   "settings.languageHelp": "اختر لغة الواجهة المفضلة لديك.",
   "settings.onlyAdminsUsers": "يمكن للمسؤولين فقط الوصول إلى مستخدمي النظام.",
   "settings.failedLoadUsers": "فشل تحميل المستخدمين.",

@@ -150,7 +150,9 @@ export function SystemSettingsContent({ mode = "page", tabQuery }: SystemSetting
   type VerifyCodeFormValues = z.infer<typeof verifyCodeSchema>;
   type PasswordFormValues = z.infer<typeof passwordSchema>;
 
-  const [activeTab, setActiveTab] = useState<SettingsTab>(SETTINGS_TABS.PERSONAL_INFO);
+  const [activeTab, setActiveTab] = useState<SettingsTab>(
+    () => getTabFromQuery(tabQuery) ?? (mode === "modal" ? SETTINGS_TABS.GENERAL : SETTINGS_TABS.PERSONAL_INFO),
+  );
   const [session, setSession] = useState<SessionState>(null);
   const [isUsernameDialogOpen, setIsUsernameDialogOpen] = useState(false);
   const [isVerifyDialogOpen, setIsVerifyDialogOpen] = useState(false);
@@ -574,15 +576,16 @@ export function SystemSettingsContent({ mode = "page", tabQuery }: SystemSetting
 
   const wrapperClasses =
     mode === "modal"
-      ? "flex w-full flex-col gap-8 p-6 transition-colors duration-500 sm:p-8"
+      ? "settings-scrollbar flex h-full min-h-0 w-full flex-col gap-8 overflow-y-auto overflow-x-hidden p-6 transition-colors duration-500 [--settings-scroll-padding:1.5rem] sm:p-8 sm:[--settings-scroll-padding:2rem]"
       : "flex min-h-screen flex-col gap-8 p-10 transition-colors duration-500";
-  const contentContainerClasses = mode === "modal" ? "max-h-[65vh]" : "max-h-[calc(100vh-14rem)]";
+  const contentContainerClasses =
+    mode === "modal" ? "settings-scrollbar max-h-[65vh] [--settings-scroll-padding:3rem]" : "max-h-[calc(100vh-14rem)]";
 
   return (
     <div className={wrapperClasses}>
       <h1 className="font-bold text-3xl text-slate-900 tracking-tight dark:text-white">{t("settings.systemTitle")}</h1>
 
-      <div className="grid grid-cols-12 items-start gap-8">
+      <div className={cn("grid grid-cols-12 items-start gap-8", mode === "modal" && "shrink-0")}>
         <div className="col-span-12 space-y-3 font-medium lg:col-span-3">
           {settingsOptions.map((item) => (
             <button
