@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import Image from "next/image";
 import Link from "next/link";
 
 import { ArrowLeft, Pencil, PlusCircle, Trash2 } from "lucide-react";
 import { getSession } from "next-auth/react";
 
+import { DashboardHeaderPath } from "@/app/(main)/dashboard/_components/dashboard-header-path";
 import { LayoutSwitcher, type LayoutSwitcherValue } from "@/components/layout-switcher";
 import {
   AlertDialog,
@@ -299,14 +299,14 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
   if (!project) {
     return (
       <div className="project-page flex h-full w-full min-w-0 max-w-full flex-col gap-6 overflow-hidden">
-        <div className="flex w-full min-w-0 max-w-full shrink-0 items-center gap-2 overflow-x-hidden">
+        <DashboardHeaderPath>
           <Button variant="ghost" size="icon-sm" asChild>
             <Link href="/dashboard/qa-boards" prefetch={false}>
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
           <h1 className="font-semibold text-xl">{t("qa.projects.project")}</h1>
-        </div>
+        </DashboardHeaderPath>
         <div className="flex flex-1 items-center justify-center text-muted-foreground">{t("qa.tables.notFound")}</div>
       </div>
     );
@@ -332,25 +332,13 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
 
   const projectHeading = (
     <div className="flex min-w-0 items-center gap-2">
-      {project.logo ? (
-        <Image
-          src={project.logo}
-          alt={`${project.name} logo`}
-          width={32}
-          height={32}
-          unoptimized
-          className="h-8 w-8 shrink-0 rounded-md border border-slate-200 object-cover dark:border-slate-700"
-        />
-      ) : (
-        <div className="h-8 w-8 shrink-0 rounded-md border border-slate-300 border-dashed dark:border-slate-700" />
-      )}
       <h2 className="min-w-0 break-words font-semibold text-xl tracking-tight">{project.name}</h2>
     </div>
   );
 
   return (
     <div className="project-page flex h-full w-full min-w-0 max-w-full flex-col gap-6 overflow-hidden">
-      <div className="flex w-full min-w-0 max-w-full shrink-0 items-center gap-2 overflow-x-hidden">
+      <DashboardHeaderPath>
         {isTableOpen ? (
           <Button
             variant="ghost"
@@ -374,7 +362,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
             <span className="font-normal text-muted-foreground text-sm">{selectedTable?.name}</span>
           </>
         ) : null}
-      </div>
+      </DashboardHeaderPath>
       {project.tables.length === 0 ? (
         <div className="flex min-h-0 flex-1 flex-col gap-3">
           <div className="flex w-full min-w-0 items-center justify-between gap-3 rtl:flex-row-reverse">
@@ -389,7 +377,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
           </div>
         </div>
       ) : selectedTableId ? (
-        <div className="flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-hidden rounded-container bg-card p-4">
+        <div className="flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-hidden">
           <DataTable
             tableId={selectedTableId}
             tableType={selectedTable?.tableType || "TEST_CASES"}

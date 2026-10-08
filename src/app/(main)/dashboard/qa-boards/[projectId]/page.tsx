@@ -20,7 +20,7 @@ export default async function QABoardProjectPage({ params }: { params: Promise<{
   const { projectId } = await params;
 
   return (
-    <div className="flex h-full min-h-0 w-full min-w-0 max-w-full flex-col gap-6 overflow-x-hidden p-6">
+    <div className="flex h-full min-h-0 w-full min-w-0 max-w-full flex-col gap-6 overflow-x-hidden">
       <ProjectWorkspace projectId={projectId} />
     </div>
   );

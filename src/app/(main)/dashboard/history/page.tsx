@@ -14,7 +14,7 @@ export default function HistoryPage() {
   const { t } = useI18n();
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-full">
       <div className="mb-2 flex items-center justify-between">
         <h1 className="font-bold text-2xl text-slate-900 dark:text-white">{t("history.title")}</h1>
         <div className="flex gap-3">

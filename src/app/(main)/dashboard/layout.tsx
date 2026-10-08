@@ -64,6 +64,7 @@ export default async function Layout({ children }: Readonly<{ children: ReactNod
           <div className="flex w-full min-w-0 max-w-full items-center justify-between overflow-x-hidden px-4 lg:px-6">
             <div className="flex min-w-0 items-center gap-1 lg:gap-2">
               <SidebarTrigger className="-ms-1" />
+              <div id="dashboard-header-path" className="min-w-0" />
             </div>
             <div className="flex min-w-0 items-center gap-2">
               <Button variant="ghost" size="icon" className="cursor-pointer rounded-full">

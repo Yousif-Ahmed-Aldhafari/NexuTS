@@ -4,7 +4,20 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import Image from "next/image";
 
-import { ChevronDown, Download, FileSpreadsheet, FileText, Pencil, PlusCircle, Trash2, X } from "lucide-react";
+import {
+  ChevronDown,
+  Copy,
+  CopyPlus,
+  Download,
+  Eye,
+  FileSpreadsheet,
+  FileText,
+  MoreHorizontal,
+  Pencil,
+  PlusCircle,
+  Trash2,
+  X,
+} from "lucide-react";
 
 import { LayoutSwitcher, type LayoutSwitcherValue } from "@/components/layout-switcher";
 import {
@@ -22,13 +35,14 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { downloadCsv, downloadPdf, downloadXlsx } from "@/lib/export-downloads";
 import { useI18n } from "@/lib/i18n/use-i18n";
-import { showSuccessMessage } from "@/lib/notifications";
+import { showErrorMessage, showSuccessMessage } from "@/lib/notifications";
 import type { FixStatus, IssuePriority, TableKind } from "@/lib/qa-entry-schema";
 
 import { EntryModal, type EntryModalInitialValues } from "./entry-modal";
@@ -110,6 +124,7 @@ export function DataTable({
 
   const [entries, setEntries] = useState<Entry[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [duplicatingEntry, setDuplicatingEntry] = useState<Entry | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [priorityFilter, setPriorityFilter] = useState("ALL");
@@ -383,8 +398,72 @@ export function DataTable({
   );
   const minColumnWidthPx = 170;
   const tableMinWidthPx = Math.max(tableColumnCount * minColumnWidthPx, 1400);
+  const copyEntryDetails = async (entry: Entry) => {
+    try {
+      await navigator.clipboard.writeText(
+        exportColumns.map((column) => `${column.header}: ${column.value(entry)}`).join("\n"),
+      );
+      showSuccessMessage(t("qa.entries.detailsCopied"));
+    } catch {
+      showErrorMessage(t("qa.entries.copyFailed"));
+    }
+  };
+
+  const renderEntryMenu = (entry: Entry) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="h-7 w-7"
+          aria-label={t("qa.entries.moreActions", { title: entry.title })}
+          onClick={(event) => event.stopPropagation()}
+          onKeyDown={(event) => event.stopPropagation()}
+        >
+          <MoreHorizontal className="h-3.5 w-3.5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => event.stopPropagation()}
+      >
+        <DropdownMenuItem onSelect={() => openEntryDetails(entry)}>
+          <Eye className="h-4 w-4" />
+          {t("qa.entries.viewDetails")}
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => void copyEntryDetails(entry)}>
+          <Copy className="h-4 w-4" />
+          {t("qa.entries.copyDetails")}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onSelect={() =>
+            downloadCsv({
+              headers: exportHeaders,
+              rows: [exportColumns.map((column) => column.value(entry))],
+              fileName: `entry-${entry.id}.csv`,
+            })
+          }
+        >
+          <Download className="h-4 w-4" />
+          {t("qa.entries.exportEntryCsv")}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onSelect={() => {
+            setDuplicatingEntry(entry);
+            setIsModalOpen(true);
+          }}
+        >
+          <CopyPlus className="h-4 w-4" />
+          {t("qa.entries.duplicate")}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
   const renderCellActions = (entry: Entry) => (
-    <div className="pointer-events-none absolute end-1 top-1 z-20 flex items-center gap-1 rounded-container border bg-background/95 p-1 opacity-0 shadow-sm transition-opacity duration-150 group-hover/cell:pointer-events-auto group-hover/cell:opacity-100 dark:bg-slate-950/95">
+    <div className="pointer-events-none absolute end-1 top-1 z-20 flex items-center gap-1 rounded-container border bg-background/95 p-1 opacity-0 shadow-sm transition-opacity duration-150 group-focus-within/cell:pointer-events-auto group-focus-within/cell:opacity-100 group-hover/cell:pointer-events-auto group-hover/cell:opacity-100 has-[[data-state=open]]:pointer-events-auto has-[[data-state=open]]:opacity-100 dark:bg-slate-950/95">
       <Button
         variant="ghost"
         size="icon-sm"
@@ -407,6 +486,7 @@ export function DataTable({
       >
         <Trash2 className="h-3.5 w-3.5" />
       </Button>
+      {renderEntryMenu(entry)}
     </div>
   );
 
@@ -689,7 +769,7 @@ export function DataTable({
                     <QaStatusBadge value={entry.status} />
                   </div>
                 </div>
-                <div className="pointer-events-none absolute end-3 top-3 flex items-center gap-1 opacity-0 transition-all duration-200 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
+                <div className="pointer-events-none absolute end-3 top-3 flex items-center gap-1 opacity-0 transition-all duration-200 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 has-[[data-state=open]]:pointer-events-auto has-[[data-state=open]]:opacity-100">
                   <Button
                     variant="ghost"
                     size="icon-sm"
@@ -712,6 +792,7 @@ export function DataTable({
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
+                  {renderEntryMenu(entry)}
                 </div>
 
                 <p className="truncate text-muted-foreground text-sm" title={entry.description || "-"}>
@@ -944,8 +1025,10 @@ export function DataTable({
           tableId={tableId}
           tableType={tableType}
           mode="create"
+          initialValues={duplicatingEntry ? getInitialValuesFromEntry(duplicatingEntry) : undefined}
           onClose={() => {
             setIsModalOpen(false);
+            setDuplicatingEntry(null);
             fetchEntries();
           }}
         />

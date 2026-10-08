@@ -577,7 +577,7 @@ export function SystemSettingsContent({ mode = "page", tabQuery }: SystemSetting
   const wrapperClasses =
     mode === "modal"
       ? "settings-scrollbar flex h-full min-h-0 w-full flex-col gap-8 overflow-y-auto overflow-x-hidden p-6 transition-colors duration-500 [--settings-scroll-padding:1.5rem] sm:p-8 sm:[--settings-scroll-padding:2rem]"
-      : "flex min-h-screen flex-col gap-8 p-10 transition-colors duration-500";
+      : "flex min-h-full flex-col gap-8 transition-colors duration-500";
   const contentContainerClasses =
     mode === "modal" ? "settings-scrollbar max-h-[65vh] [--settings-scroll-padding:3rem]" : "max-h-[calc(100vh-14rem)]";
 
