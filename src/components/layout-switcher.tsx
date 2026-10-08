@@ -18,7 +18,7 @@ export type LayoutSwitcherProps = {
 };
 
 const layoutToggleGroupClassName =
-  "inline-flex items-center rounded-xl border border-border bg-white p-1 shadow-sm dark:bg-slate-900";
+  "inline-flex items-center rounded-container border border-border bg-white p-1 shadow-sm dark:bg-slate-900";
 const layoutToggleItemBaseClassName = "h-9 w-9 rounded-lg border border-transparent p-0 shadow-none transition-all";
 
 type LayoutSwitcherItemProps = {

@@ -64,7 +64,7 @@ export function TestStatusHeader({ stats }: { stats: HomePageKpiStats }) {
       {displayStats.map((stat) => (
         <div
           key={stat.label}
-          className="flex items-center gap-4 rounded-[2rem] border border-slate-100 bg-white p-5 shadow-sm transition-all duration-300 dark:border-slate-800 dark:bg-[#161B22]"
+          className="flex items-center gap-4 rounded-container border border-slate-100 bg-white p-5 shadow-sm transition-all duration-300 dark:border-slate-800 dark:bg-[#161B22]"
         >
           <div className={`rounded-2xl p-3 ${stat.bgColor} ${stat.color} transition-colors`}>
             <stat.icon className="h-6 w-6" />

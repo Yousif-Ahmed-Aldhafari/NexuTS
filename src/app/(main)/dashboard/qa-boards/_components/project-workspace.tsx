@@ -298,8 +298,8 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
 
   if (!project) {
     return (
-      <div className="flex h-full w-full min-w-0 max-w-full flex-col gap-6 overflow-x-hidden">
-        <div className="flex w-full min-w-0 max-w-full items-center gap-2 overflow-x-hidden">
+      <div className="project-page flex h-full w-full min-w-0 max-w-full flex-col gap-6 overflow-hidden">
+        <div className="flex w-full min-w-0 max-w-full shrink-0 items-center gap-2 overflow-x-hidden">
           <Button variant="ghost" size="icon-sm" asChild>
             <Link href="/dashboard/qa-boards" prefetch={false}>
               <ArrowLeft className="h-4 w-4" />
@@ -330,9 +330,27 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
   };
   const isTableFilterClearDisabled = !tableSearchQuery && tableTypeFilter === "ALL" && createdByFilter === "ALL";
 
+  const projectHeading = (
+    <div className="flex min-w-0 items-center gap-2">
+      {project.logo ? (
+        <Image
+          src={project.logo}
+          alt={`${project.name} logo`}
+          width={32}
+          height={32}
+          unoptimized
+          className="h-8 w-8 shrink-0 rounded-md border border-slate-200 object-cover dark:border-slate-700"
+        />
+      ) : (
+        <div className="h-8 w-8 shrink-0 rounded-md border border-slate-300 border-dashed dark:border-slate-700" />
+      )}
+      <h2 className="min-w-0 break-words font-semibold text-xl tracking-tight">{project.name}</h2>
+    </div>
+  );
+
   return (
-    <div className="flex h-full w-full min-w-0 max-w-full flex-col gap-6 overflow-x-hidden">
-      <div className="flex w-full min-w-0 max-w-full items-center gap-2 overflow-x-hidden">
+    <div className="project-page flex h-full w-full min-w-0 max-w-full flex-col gap-6 overflow-hidden">
+      <div className="flex w-full min-w-0 max-w-full shrink-0 items-center gap-2 overflow-x-hidden">
         {isTableOpen ? (
           <Button
             variant="ghost"
@@ -349,52 +367,48 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
             </Link>
           </Button>
         )}
-        {project.logo ? (
-          <Image
-            src={project.logo}
-            alt={`${project.name} logo`}
-            width={32}
-            height={32}
-            unoptimized
-            className="h-8 w-8 rounded-md border border-slate-200 object-cover dark:border-slate-700"
-          />
-        ) : (
-          <div className="h-8 w-8 rounded-md border border-slate-300 border-dashed dark:border-slate-700" />
-        )}
-        <h1 className="font-semibold text-xl">{project.name}</h1>
+        <span className="font-normal text-muted-foreground text-sm">{project.name}</span>
         {isTableOpen ? (
           <>
-            <span className="text-muted-foreground text-xl">&gt;</span>
-            <span className="font-medium text-lg">{selectedTable?.name}</span>
+            <span className="text-muted-foreground text-sm">&gt;</span>
+            <span className="font-normal text-muted-foreground text-sm">{selectedTable?.name}</span>
           </>
         ) : null}
       </div>
       {project.tables.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center">
-          <div className="flex flex-col items-center gap-3 text-center">
-            <p className="text-muted-foreground">{t("qa.tables.empty")}</p>
-            <Button onClick={handleOpenCreateTableDialog}>{t("qa.tables.create")}</Button>
-            <h2 className="font-semibold text-xl tracking-tight">{t("qa.tables.title")}</h2>
-          </div>
-        </div>
-      ) : selectedTableId ? (
-        <div className="w-full min-w-0 max-w-full overflow-x-hidden rounded-md bg-card p-4">
-          <DataTable tableId={selectedTableId} tableType={selectedTable?.tableType || "TEST_CASES"} />
-        </div>
-      ) : (
-        <>
-          <div className="flex w-full min-w-0 max-w-full flex-wrap items-center justify-between gap-3 overflow-x-hidden">
+        <div className="flex min-h-0 flex-1 flex-col gap-3">
+          <div className="flex w-full min-w-0 items-center justify-between gap-3 rtl:flex-row-reverse">
+            {projectHeading}
             <Button onClick={handleOpenCreateTableDialog}>
               <PlusCircle className="mr-2 h-4 w-4" />
               {t("qa.tables.create")}
             </Button>
-            <h2 className="w-full font-semibold text-xl tracking-tight">{t("qa.tables.title")}</h2>
+          </div>
+          <div className="flex flex-1 items-center justify-center text-center">
+            <p className="text-muted-foreground">{t("qa.tables.empty")}</p>
+          </div>
+        </div>
+      ) : selectedTableId ? (
+        <div className="flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-hidden rounded-container bg-card p-4">
+          <DataTable
+            tableId={selectedTableId}
+            tableType={selectedTable?.tableType || "TEST_CASES"}
+            tableName={selectedTable?.name}
+          />
+        </div>
+      ) : (
+        <>
+          <div className="project-toolbar flex w-full min-w-0 max-w-full flex-wrap items-center justify-between gap-3 overflow-x-hidden">
+            <div className="flex w-full min-w-0 items-center justify-between gap-3 rtl:flex-row-reverse">
+              {projectHeading}
+              <Button onClick={handleOpenCreateTableDialog}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                {t("qa.tables.create")}
+              </Button>
+            </div>
             <div className="flex w-full min-w-0 max-w-full flex-col items-end gap-2 overflow-x-hidden">
-              <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-2 overflow-x-hidden">
-                <span className="text-muted-foreground text-xs">
-                  {filteredTables.length} {t("common.results")}
-                </span>
-                <div className="flex w-full min-w-0 flex-wrap items-center justify-end gap-2 overflow-x-hidden">
+              <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-2 overflow-x-hidden rtl:flex-row-reverse">
+                <div className="flex min-w-0 flex-1 flex-wrap items-center justify-start gap-2 overflow-x-hidden rtl:justify-end">
                   <Input
                     placeholder={t("qa.tables.searchPlaceholder")}
                     value={tableSearchQuery}
@@ -420,169 +434,174 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                     widthClassName="w-[150px]"
                   />
 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-9 px-2"
-                    onClick={clearTableFilters}
-                    disabled={isTableFilterClearDisabled}
-                  >
-                    {t("common.clear")}
-                  </Button>
-
-                  <LayoutSwitcher value={tableViewMode} onChange={setTableViewMode} />
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="whitespace-nowrap text-muted-foreground text-xs">
+                      {filteredTables.length} {t("common.results")}
+                    </span>
+                    {!isTableFilterClearDisabled && (
+                      <Button variant="ghost" size="sm" className="h-9 px-2" onClick={clearTableFilters}>
+                        {t("common.clear")}
+                      </Button>
+                    )}
+                  </div>
                 </div>
+                <LayoutSwitcher value={tableViewMode} onChange={setTableViewMode} className="shrink-0" />
               </div>
             </div>
           </div>
 
-          {tableViewMode === "grid" ? (
-            <div className="flex flex-wrap items-start gap-4">
-              {filteredTables.length === 0 ? (
-                <div className="w-full rounded-md border py-14 text-center text-muted-foreground">
-                  {t("qa.tables.noResults")}
-                </div>
-              ) : (
-                filteredTables.map((table) => (
-                  <Card key={table.id} className="group h-fit w-fit max-w-full gap-3 py-4">
-                    <CardHeader className="gap-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <CardTitle className="text-xl">{table.name}</CardTitle>
-                        <div className="flex items-center gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            className="h-8 w-8"
-                            aria-label={t("qa.tables.updateAria", { name: table.name })}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handleStartEditTable(table);
-                            }}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            aria-label={t("qa.tables.deleteAria", { name: table.name })}
-                            disabled={Boolean(deletingTableId)}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setTableToDelete(table);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+          <div className="project-scroll">
+            {tableViewMode === "grid" ? (
+              <div className="flex flex-wrap items-start gap-4">
+                {filteredTables.length === 0 ? (
+                  <div className="w-full rounded-container border py-14 text-center text-muted-foreground">
+                    {t("qa.tables.noResults")}
+                  </div>
+                ) : (
+                  filteredTables.map((table) => (
+                    <Card key={table.id} className="group h-fit w-fit max-w-full gap-3 py-4">
+                      <CardHeader className="gap-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <CardTitle className="text-xl">{table.name}</CardTitle>
+                          <div className="flex items-center gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="h-8 w-8"
+                              aria-label={t("qa.tables.updateAria", { name: table.name })}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleStartEditTable(table);
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              aria-label={t("qa.tables.deleteAria", { name: table.name })}
+                              disabled={Boolean(deletingTableId)}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setTableToDelete(table);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex flex-col gap-2 text-muted-foreground text-sm">
-                        <p>
-                          {t("qa.tables.type")}:{" "}
-                          {table.tableType === "TEST_CASES" ? t("qa.tables.testCases") : t("qa.tables.issueLogs")}
-                        </p>
-                        <p>
-                          {t("qa.tables.createdBy")}: {tableCreatorDisplay}
-                        </p>
-                        <p>
-                          {t("qa.tables.created")}: {new Date(table.createdAt).toLocaleDateString(localeCode)}
-                        </p>
-                      </div>
-                    </CardContent>
-                    <CardFooter className="pt-2">
-                      <Button variant="secondary" className="w-full" onClick={() => setSelectedTableId(table.id)}>
-                        {t("qa.tables.open")}
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                ))
-              )}
-            </div>
-          ) : (
-            <div className="w-full min-w-0 max-w-full overflow-x-hidden rounded-md border">
-              <div className="w-full min-w-0 max-w-full overflow-x-auto">
-                <Table className="w-full table-fixed">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-1/5 px-3 py-2">{t("qa.tables.tableName")}</TableHead>
-                      <TableHead className="w-1/5 px-3 py-2">{t("qa.tables.type")}</TableHead>
-                      <TableHead className="w-1/5 px-3 py-2">{t("qa.tables.createdBy")}</TableHead>
-                      <TableHead className="w-1/5 px-3 py-2">{t("qa.tables.created")}</TableHead>
-                      <TableHead className="w-1/5 px-3 py-2 text-end">{t("qa.tables.lastUpdated")}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredTables.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="h-24 px-3 py-2 text-center text-muted-foreground">
-                          {t("qa.tables.noResults")}
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      filteredTables.map((table) => (
-                        <TableRow
-                          key={table.id}
-                          className="group cursor-pointer"
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex flex-col gap-2 text-muted-foreground text-sm">
+                          <p>
+                            {t("qa.tables.type")}:{" "}
+                            {table.tableType === "TEST_CASES" ? t("qa.tables.testCases") : t("qa.tables.issueLogs")}
+                          </p>
+                          <p>
+                            {t("qa.tables.createdBy")}: {tableCreatorDisplay}
+                          </p>
+                          <p>
+                            {t("qa.tables.created")}: {new Date(table.createdAt).toLocaleDateString(localeCode)}
+                          </p>
+                        </div>
+                      </CardContent>
+                      <CardFooter className="pt-2">
+                        <Button
+                          className="w-full bg-blue-600 text-white hover:bg-blue-700"
                           onClick={() => setSelectedTableId(table.id)}
                         >
-                          <TableCell className="w-1/5 px-3 py-2 font-medium">
-                            <span className="block truncate">{table.name}</span>
-                          </TableCell>
-                          <TableCell className="w-1/5 px-3 py-2">
-                            <span className="block truncate">
-                              {table.tableType === "TEST_CASES" ? t("qa.tables.testCases") : t("qa.tables.issueLogs")}
-                            </span>
-                          </TableCell>
-                          <TableCell className="w-1/5 px-3 py-2">
-                            <span className="block truncate">{tableCreatorDisplay}</span>
-                          </TableCell>
-                          <TableCell className="w-1/5 px-3 py-2">
-                            {new Date(table.createdAt).toLocaleDateString(localeCode)}
-                          </TableCell>
-                          <TableCell className="w-1/5 px-3 py-2 text-end">
-                            <div className="relative flex min-h-8 w-full items-center justify-end">
-                              <span className="transition-opacity group-focus-within:opacity-0 group-hover:opacity-0">
-                                {new Date(table.updatedAt).toLocaleDateString(localeCode)}
-                              </span>
-                              <div className="-translate-y-1/2 pointer-events-none absolute end-0 top-1/2 flex items-center gap-1 opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
-                                <Button
-                                  variant="ghost"
-                                  size="icon-sm"
-                                  className="h-8 w-8"
-                                  aria-label={t("qa.tables.updateAria", { name: table.name })}
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    handleStartEditTable(table);
-                                  }}
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon-sm"
-                                  className="h-8 w-8 text-destructive hover:text-destructive"
-                                  aria-label={t("qa.tables.deleteAria", { name: table.name })}
-                                  disabled={Boolean(deletingTableId)}
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    setTableToDelete(table);
-                                  }}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
+                          {t("qa.tables.open")}
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  ))
+                )}
+              </div>
+            ) : (
+              <div className="w-full min-w-0 max-w-full overflow-x-hidden rounded-container border">
+                <div className="w-full min-w-0 max-w-full overflow-x-auto">
+                  <Table className="w-full table-fixed">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-1/5 px-3 py-2 text-start">{t("qa.tables.tableName")}</TableHead>
+                        <TableHead className="w-1/5 px-3 py-2 text-start">{t("qa.tables.type")}</TableHead>
+                        <TableHead className="w-1/5 px-3 py-2 text-start">{t("qa.tables.createdBy")}</TableHead>
+                        <TableHead className="w-1/5 px-3 py-2 text-start">{t("qa.tables.created")}</TableHead>
+                        <TableHead className="w-1/5 px-3 py-2 text-end">{t("qa.tables.lastUpdated")}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredTables.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="h-24 px-3 py-2 text-center text-muted-foreground">
+                            {t("qa.tables.noResults")}
                           </TableCell>
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
+                      ) : (
+                        filteredTables.map((table) => (
+                          <TableRow
+                            key={table.id}
+                            className="group cursor-pointer"
+                            onClick={() => setSelectedTableId(table.id)}
+                          >
+                            <TableCell className="w-1/5 px-3 py-2 font-medium">
+                              <span className="block truncate">{table.name}</span>
+                            </TableCell>
+                            <TableCell className="w-1/5 px-3 py-2">
+                              <span className="block truncate">
+                                {table.tableType === "TEST_CASES" ? t("qa.tables.testCases") : t("qa.tables.issueLogs")}
+                              </span>
+                            </TableCell>
+                            <TableCell className="w-1/5 px-3 py-2">
+                              <span className="block truncate">{tableCreatorDisplay}</span>
+                            </TableCell>
+                            <TableCell className="w-1/5 px-3 py-2">
+                              {new Date(table.createdAt).toLocaleDateString(localeCode)}
+                            </TableCell>
+                            <TableCell className="w-1/5 px-3 py-2 text-end">
+                              <div className="relative flex min-h-8 w-full items-center justify-end">
+                                <span className="transition-opacity group-focus-within:opacity-0 group-hover:opacity-0">
+                                  {new Date(table.updatedAt).toLocaleDateString(localeCode)}
+                                </span>
+                                <div className="-translate-y-1/2 pointer-events-none absolute end-0 top-1/2 flex items-center gap-1 opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    className="h-8 w-8"
+                                    aria-label={t("qa.tables.updateAria", { name: table.name })}
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      handleStartEditTable(table);
+                                    }}
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    className="h-8 w-8 text-destructive hover:text-destructive"
+                                    aria-label={t("qa.tables.deleteAria", { name: table.name })}
+                                    disabled={Boolean(deletingTableId)}
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      setTableToDelete(table);
+                                    }}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </>
       )}
 

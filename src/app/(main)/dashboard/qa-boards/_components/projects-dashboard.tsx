@@ -172,238 +172,257 @@ export function ProjectsDashboard({
   }
 
   return (
-    <div className="flex h-full w-full flex-col gap-6">
-      {isNexumindLayout ? (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <AddProjectDialog
-            creatorDisplay={userName}
-            onProjectAdded={fetchProjects}
-            open={isCreateProjectDialogOpen}
-            onOpenChange={setIsCreateProjectDialogOpen}
-          />
-          <Button type="button" onClick={handleOpenAddProject}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            {t("qa.projects.add")}
-          </Button>
-        </div>
-      ) : null}
-
-      <div className="flex w-full flex-wrap items-center justify-between gap-3">
+    <div className="project-page flex h-full w-full flex-col gap-6 overflow-hidden">
+      <div className="project-toolbar flex flex-col gap-6">
         {isNexumindLayout ? (
-          <h2 className="font-semibold text-slate-900 text-xl tracking-tight dark:text-white">
-            {t("qa.projects.current")}
-          </h2>
-        ) : (
-          <h2 className="font-semibold text-xl tracking-tight">{t("qa.projects.current")}</h2>
-        )}
-        {projects.length > 0 ? <LayoutSwitcher value={viewMode} onChange={setViewMode} /> : null}
-      </div>
-
-      {projects.length === 0 ? (
-        isNexumindLayout ? (
-          <div className="flex min-h-[240px] items-center justify-center rounded-xl border border-slate-300 border-dashed bg-white/40 p-6 dark:border-slate-700 dark:bg-slate-900/30">
-            <p className="text-muted-foreground">{t("qa.projects.empty")}</p>
+          <div className="flex min-w-0 items-center justify-between gap-3 rtl:flex-row-reverse">
+            <AddProjectDialog
+              creatorDisplay={userName}
+              onProjectAdded={fetchProjects}
+              open={isCreateProjectDialogOpen}
+              onOpenChange={setIsCreateProjectDialogOpen}
+            />
+            <h2 className="min-w-0 break-words font-semibold text-slate-900 text-xl tracking-tight dark:text-white">
+              {t("qa.projects.nexumindTitle")}
+            </h2>
+            <Button type="button" onClick={handleOpenAddProject}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              {t("qa.projects.add")}
+            </Button>
           </div>
+        ) : null}
+
+        {isNexumindLayout ? (
+          projects.length > 0 ? (
+            <div className="flex w-full justify-end rtl:justify-start">
+              <LayoutSwitcher value={viewMode} onChange={setViewMode} />
+            </div>
+          ) : null
         ) : (
-          <div className="flex flex-1 items-center justify-center">
-            <div className="flex flex-col items-center gap-3 text-center">
+          <div className="flex w-full flex-col gap-6">
+            <h2 className="font-semibold text-xl tracking-tight">{t("qa.projects.current")}</h2>
+            {projects.length > 0 ? (
+              <div className="flex w-full justify-end rtl:justify-start">
+                <LayoutSwitcher value={viewMode} onChange={setViewMode} />
+              </div>
+            ) : null}
+          </div>
+        )}
+      </div>
+      <div className="project-scroll">
+        {projects.length === 0 ? (
+          isNexumindLayout ? (
+            <div className="flex min-h-[240px] items-center justify-center rounded-container border border-slate-300 border-dashed bg-white/40 p-6 dark:border-slate-700 dark:bg-slate-900/30">
               <p className="text-muted-foreground">{t("qa.projects.empty")}</p>
             </div>
-          </div>
-        )
-      ) : viewMode === "grid" ? (
-        <div className="flex flex-wrap items-start gap-4">
-          {projects.map((project) => (
-            <Card key={project.id} className="group h-fit w-fit max-w-full gap-3 self-start py-4">
-              <CardHeader className="gap-1">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    {project.logo ? (
-                      <Image
-                        src={project.logo}
-                        alt={`${project.name} logo`}
-                        width={32}
-                        height={32}
-                        unoptimized
-                        className="h-8 w-8 rounded-md border border-slate-200 object-cover dark:border-slate-700"
-                      />
-                    ) : (
-                      <div className="h-8 w-8 rounded-md border border-slate-300 border-dashed dark:border-slate-700" />
-                    )}
-                    <CardTitle className="text-xl">{project.name}</CardTitle>
-                  </div>
-                  {isNexumindLayout && isAdmin ? (
-                    <div className="flex items-center gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="h-8 w-8"
-                        aria-label={t("qa.projects.updateAria", { name: project.name })}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleStartEditProject(project);
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                        aria-label={t("qa.projects.deleteAria", { name: project.name })}
-                        disabled={Boolean(deletingProjectId)}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setProjectToDelete(project);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ) : null}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-col gap-2 text-muted-foreground text-sm">
-                  {project.url && (
+          ) : (
+            <div className="flex flex-1 items-center justify-center">
+              <div className="flex flex-col items-center gap-3 text-center">
+                <p className="text-muted-foreground">{t("qa.projects.empty")}</p>
+              </div>
+            </div>
+          )
+        ) : viewMode === "grid" ? (
+          <div className="flex flex-wrap items-start gap-4">
+            {projects.map((project) => (
+              <Card key={project.id} className="group h-fit w-fit max-w-full gap-3 self-start py-4">
+                <CardHeader className="gap-1">
+                  <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <ExternalLink className="h-4 w-4" />
-                      <a
-                        href={project.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-primary hover:underline"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                        }}
-                      >
-                        {project.url}
-                      </a>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <UserIcon className="h-4 w-4" />
-                    <span>
-                      {t("qa.projects.createdBy")}{" "}
-                      {project.user?.name || project.user?.email || project.createdBy || t("common.unknown")}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter className="pt-2">
-                <Button variant="secondary" className="w-full" onClick={() => handleOpenProject(project)}>
-                  {t("qa.projects.open")}
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <div className="rounded-md border">
-          <Table className="w-full table-fixed">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-1/5 px-3 py-2">{t("qa.projects.project")}</TableHead>
-                <TableHead className="w-1/5 px-3 py-2">{t("qa.projects.url")}</TableHead>
-                <TableHead className="w-1/5 px-3 py-2">{t("qa.projects.createdBy")}</TableHead>
-                <TableHead className="w-1/5 px-3 py-2">{t("qa.projects.createdAt")}</TableHead>
-                <TableHead className="w-1/5 px-3 py-2 text-end">{t("qa.projects.lastUpdate")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {projects.map((project) => (
-                <TableRow key={project.id} className="group cursor-pointer" onClick={() => handleOpenProject(project)}>
-                  <TableCell className="w-1/5 px-3 py-2 font-medium">
-                    <div className="flex w-full min-w-0 items-center gap-2">
                       {project.logo ? (
                         <Image
                           src={project.logo}
                           alt={`${project.name} logo`}
-                          width={28}
-                          height={28}
+                          width={32}
+                          height={32}
                           unoptimized
-                          className="h-7 w-7 rounded-md border border-slate-200 object-cover dark:border-slate-700"
+                          className="h-8 w-8 rounded-md border border-slate-200 object-cover dark:border-slate-700"
                         />
                       ) : (
-                        <div className="h-7 w-7 rounded-md border border-slate-300 border-dashed dark:border-slate-700" />
+                        <div className="h-8 w-8 rounded-md border border-slate-300 border-dashed dark:border-slate-700" />
                       )}
-                      <span className="block min-w-0 flex-1 truncate">{project.name}</span>
+                      <CardTitle className="text-xl">{project.name}</CardTitle>
                     </div>
-                  </TableCell>
-                  <TableCell className="w-1/5 px-3 py-2">
-                    {project.url ? (
-                      <Button asChild variant="secondary" size="sm" className="h-8">
+                    {isNexumindLayout && isAdmin ? (
+                      <div className="flex items-center gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="h-8 w-8"
+                          aria-label={t("qa.projects.updateAria", { name: project.name })}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleStartEditProject(project);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          aria-label={t("qa.projects.deleteAria", { name: project.name })}
+                          disabled={Boolean(deletingProjectId)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setProjectToDelete(project);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : null}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-col gap-2 text-muted-foreground text-sm">
+                    {project.url && (
+                      <div className="flex items-center gap-2">
+                        <ExternalLink className="h-4 w-4" />
                         <a
                           href={project.url}
                           target="_blank"
                           rel="noreferrer"
+                          className="text-primary hover:underline"
                           onClick={(event) => {
                             event.stopPropagation();
                           }}
                         >
-                          {t("qa.projects.website")}
+                          {project.url}
                         </a>
-                      </Button>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
+                      </div>
                     )}
-                  </TableCell>
-                  <TableCell className="w-1/5 px-3 py-2">
-                    <span className="block truncate">
-                      {project.user?.name || project.user?.email || project.createdBy || t("common.unknown")}
-                    </span>
-                  </TableCell>
-                  <TableCell className="w-1/5 px-3 py-2">
-                    {new Date(project.createdAt).toLocaleDateString(localeCode)}
-                  </TableCell>
-                  <TableCell className="w-1/5 px-3 py-2 text-end">
-                    <div className="relative flex min-h-8 w-full items-center justify-end">
-                      <span
-                        className={
-                          isNexumindLayout && isAdmin
-                            ? "transition-opacity group-focus-within:opacity-0 group-hover:opacity-0"
-                            : undefined
-                        }
-                      >
-                        {new Date(project.updatedAt).toLocaleDateString(localeCode)}
+                    <div className="flex items-center gap-2">
+                      <UserIcon className="h-4 w-4" />
+                      <span>
+                        {t("qa.projects.createdBy")}{" "}
+                        {project.user?.name || project.user?.email || project.createdBy || t("common.unknown")}
                       </span>
-                      {isNexumindLayout && isAdmin ? (
-                        <div className="-translate-y-1/2 pointer-events-none absolute end-0 top-1/2 flex items-center gap-1 opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            className="h-8 w-8"
-                            aria-label={t("qa.projects.updateAria", { name: project.name })}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handleStartEditProject(project);
-                            }}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            aria-label={t("qa.projects.deleteAria", { name: project.name })}
-                            disabled={Boolean(deletingProjectId)}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setProjectToDelete(project);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ) : null}
                     </div>
-                  </TableCell>
+                  </div>
+                </CardContent>
+                <CardFooter className="pt-2">
+                  <Button
+                    className="w-full bg-blue-600 text-white hover:bg-blue-700"
+                    onClick={() => handleOpenProject(project)}
+                  >
+                    {t("qa.projects.open")}
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-container border">
+            <Table className="w-full table-fixed">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-1/5 px-3 py-2 text-start">{t("qa.projects.project")}</TableHead>
+                  <TableHead className="w-1/5 px-3 py-2 text-start">{t("qa.projects.url")}</TableHead>
+                  <TableHead className="w-1/5 px-3 py-2 text-start">{t("qa.projects.createdBy")}</TableHead>
+                  <TableHead className="w-1/5 px-3 py-2 text-start">{t("qa.projects.createdAt")}</TableHead>
+                  <TableHead className="w-1/5 px-3 py-2 text-end">{t("qa.projects.lastUpdate")}</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+              </TableHeader>
+              <TableBody>
+                {projects.map((project) => (
+                  <TableRow
+                    key={project.id}
+                    className="group cursor-pointer"
+                    onClick={() => handleOpenProject(project)}
+                  >
+                    <TableCell className="w-1/5 px-3 py-2 font-medium">
+                      <div className="flex w-full min-w-0 items-center gap-2">
+                        {project.logo ? (
+                          <Image
+                            src={project.logo}
+                            alt={`${project.name} logo`}
+                            width={28}
+                            height={28}
+                            unoptimized
+                            className="h-7 w-7 rounded-md border border-slate-200 object-cover dark:border-slate-700"
+                          />
+                        ) : (
+                          <div className="h-7 w-7 rounded-md border border-slate-300 border-dashed dark:border-slate-700" />
+                        )}
+                        <span className="block min-w-0 flex-1 truncate">{project.name}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="w-1/5 px-3 py-2">
+                      {project.url ? (
+                        <Button asChild size="sm" className="h-8 bg-blue-600 text-white hover:bg-blue-700">
+                          <a
+                            href={project.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                            }}
+                          >
+                            {t("qa.projects.website")}
+                          </a>
+                        </Button>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="w-1/5 px-3 py-2">
+                      <span className="block truncate">
+                        {project.user?.name || project.user?.email || project.createdBy || t("common.unknown")}
+                      </span>
+                    </TableCell>
+                    <TableCell className="w-1/5 px-3 py-2">
+                      {new Date(project.createdAt).toLocaleDateString(localeCode)}
+                    </TableCell>
+                    <TableCell className="w-1/5 px-3 py-2 text-end">
+                      <div className="relative flex min-h-8 w-full items-center justify-end">
+                        <span
+                          className={
+                            isNexumindLayout && isAdmin
+                              ? "transition-opacity group-focus-within:opacity-0 group-hover:opacity-0"
+                              : undefined
+                          }
+                        >
+                          {new Date(project.updatedAt).toLocaleDateString(localeCode)}
+                        </span>
+                        {isNexumindLayout && isAdmin ? (
+                          <div className="-translate-y-1/2 pointer-events-none absolute end-0 top-1/2 flex items-center gap-1 opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="h-8 w-8"
+                              aria-label={t("qa.projects.updateAria", { name: project.name })}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleStartEditProject(project);
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              aria-label={t("qa.projects.deleteAria", { name: project.name })}
+                              disabled={Boolean(deletingProjectId)}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setProjectToDelete(project);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
 
       {projectToEdit ? (
         <AddProjectDialog

@@ -74,7 +74,7 @@ export function NavUser({
               </div>
             </div>
             <div className="px-2 pb-2">
-              <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
+              <div className="grid grid-cols-3 gap-1 rounded-container bg-muted p-1">
                 {themeOptions.map(({ label, mode, Icon }) => (
                   <button
                     key={mode}

@@ -155,7 +155,8 @@ export const enMessages = {
   "home.avgDuration": "Avg. Duration",
   "home.failed": "Failed",
 
-  "qa.projects.current": "Current Projects",
+  "qa.projects.current": "Tests & Issues",
+  "qa.projects.nexumindTitle": "Nexumind Projects",
   "qa.projects.add": "Add Project",
   "qa.projects.empty": "There is no any project",
   "qa.projects.open": "Open Project",

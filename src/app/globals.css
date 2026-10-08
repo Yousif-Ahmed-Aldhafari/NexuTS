@@ -9,6 +9,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --radius-container: var(--container-radius);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -52,6 +53,8 @@
 /* Default theme styles (used when no data-theme-preset is set or when 'default' is selected).
 These serve as the fallback; there is no separate default.css file. */
 :root {
+  /* Shared surface radius; theme presets may still customize control radii. */
+  --container-radius: 0.75rem;
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
@@ -214,6 +217,35 @@ These serve as the fallback; there is no separate default.css file. */
 
 html {
   overscroll-behavior: none;
+}
+
+.dashboard-content {
+  scrollbar-gutter: stable;
+}
+
+.dashboard-content:has(.project-page) {
+  overflow: hidden;
+  scrollbar-gutter: auto;
+}
+
+.project-page {
+  min-height: 0;
+  min-width: 0;
+}
+
+.project-toolbar {
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+.project-scroll {
+  flex: 1 1 0%;
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  border-radius: var(--container-radius);
 }
 
 .disable-transitions * {

@@ -9,7 +9,7 @@ export function VisualExecutionTree() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3 rounded-2xl bg-slate-900 p-4 font-mono text-blue-400 text-sm dark:bg-[#010409]">
+      <div className="flex items-center gap-3 rounded-container bg-slate-900 p-4 font-mono text-blue-400 text-sm dark:bg-[#010409]">
         <Terminal className="h-4 w-4 text-slate-400" />
         <span>{t("execution.command")}</span>
       </div>

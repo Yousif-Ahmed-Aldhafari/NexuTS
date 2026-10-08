@@ -76,7 +76,15 @@ type ExportColumnDefinition = {
   value: (entry: Entry) => string;
 };
 
-export function DataTable({ tableId, tableType }: { tableId: string; tableType: TableKind }) {
+export function DataTable({
+  tableId,
+  tableType,
+  tableName,
+}: {
+  tableId: string;
+  tableType: TableKind;
+  tableName?: string;
+}) {
   const { t, locale } = useI18n();
   const localeCode = locale === "ar" ? "ar-SA" : "en-US";
 
@@ -376,7 +384,7 @@ export function DataTable({ tableId, tableType }: { tableId: string; tableType: 
   const minColumnWidthPx = 170;
   const tableMinWidthPx = Math.max(tableColumnCount * minColumnWidthPx, 1400);
   const renderCellActions = (entry: Entry) => (
-    <div className="pointer-events-none absolute end-1 top-1 z-20 flex items-center gap-1 rounded-md border bg-background/95 p-1 opacity-0 shadow-sm transition-opacity duration-150 group-hover/cell:pointer-events-auto group-hover/cell:opacity-100 dark:bg-slate-950/95">
+    <div className="pointer-events-none absolute end-1 top-1 z-20 flex items-center gap-1 rounded-container border bg-background/95 p-1 opacity-0 shadow-sm transition-opacity duration-150 group-hover/cell:pointer-events-auto group-hover/cell:opacity-100 dark:bg-slate-950/95">
       <Button
         variant="ghost"
         size="icon-sm"
@@ -403,18 +411,15 @@ export function DataTable({ tableId, tableType }: { tableId: string; tableType: 
   );
 
   return (
-    <div className="flex w-full min-w-0 max-w-full flex-col gap-4 overflow-x-hidden">
-      <div className="flex w-full min-w-0 max-w-full flex-wrap items-start justify-between gap-3 overflow-x-hidden">
+    <div className="project-page flex h-full w-full min-w-0 max-w-full flex-col gap-4 overflow-hidden">
+      <div className="project-toolbar flex w-full min-w-0 max-w-full flex-wrap items-start justify-between gap-3 overflow-x-hidden">
         <h2 className="font-semibold text-xl">
-          {tableType === "TEST_CASES" ? t("qa.entries.testCases") : t("qa.entries.issueLogs")}
+          {tableName ?? (tableType === "TEST_CASES" ? t("qa.entries.testCases") : t("qa.entries.issueLogs"))}
         </h2>
 
         <div className="flex w-full min-w-0 max-w-full flex-col items-end gap-2 overflow-x-hidden">
-          <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-2 overflow-x-hidden">
-            <span className="text-muted-foreground text-xs">
-              {filteredEntries.length} {t("qa.entries.results")}
-            </span>
-            <div className="flex w-full min-w-0 flex-wrap items-center justify-end gap-2 overflow-x-hidden">
+          <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-2 overflow-x-hidden rtl:flex-row-reverse">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center justify-start gap-2 overflow-x-hidden rtl:justify-end">
               <Input
                 placeholder={t("qa.entries.searchPlaceholder")}
                 value={searchQuery}
@@ -463,12 +468,18 @@ export function DataTable({ tableId, tableType }: { tableId: string; tableType: 
                 />
               )}
 
-              <Button variant="ghost" size="sm" className="h-9 px-2" onClick={clearFilters} disabled={isClearDisabled}>
-                {t("qa.entries.clear")}
-              </Button>
-
-              <LayoutSwitcher value={layoutMode} onChange={setLayoutMode} />
+              <div className="flex shrink-0 items-center gap-2">
+                <span className="whitespace-nowrap text-muted-foreground text-xs">
+                  {filteredEntries.length} {t("qa.entries.results")}
+                </span>
+                {!isClearDisabled && (
+                  <Button variant="ghost" size="sm" className="h-9 px-2" onClick={clearFilters}>
+                    {t("qa.entries.clear")}
+                  </Button>
+                )}
+              </div>
             </div>
+            <LayoutSwitcher value={layoutMode} onChange={setLayoutMode} className="shrink-0" />
           </div>
 
           <div className="flex w-full min-w-0 flex-wrap items-center justify-end gap-2 overflow-x-hidden">
@@ -503,261 +514,265 @@ export function DataTable({ tableId, tableType }: { tableId: string; tableType: 
         </div>
       </div>
 
-      {layoutMode === "table" ? (
-        <div className="w-full min-w-0 overflow-hidden rounded-md border">
-          <div className="w-full min-w-0 overflow-x-auto">
-            <Table
-              className="w-full table-fixed text-sm [&_td]:px-4 [&_td]:py-3 [&_th]:px-4 [&_th]:py-3"
-              style={{ minWidth: `${tableMinWidthPx}px` }}
-            >
-              <colgroup>
-                {tableColumnKeys.map((columnKey) => (
-                  <col key={columnKey} style={{ width: `${100 / tableColumnCount}%` }} />
-                ))}
-              </colgroup>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("qa.entries.id")}</TableHead>
-                  <TableHead>{t("qa.entries.reporter")}</TableHead>
-                  <TableHead>{t("qa.entryModal.title")}</TableHead>
-                  <TableHead>{t("qa.entryModal.description")}</TableHead>
-                  <TableHead>{t("qa.entryModal.steps")}</TableHead>
-                  {tableType === "TEST_CASES" ? (
-                    <>
-                      <TableHead>{t("qa.entryModal.result")}</TableHead>
-                      <TableHead>{t("qa.entries.expectedShort")}</TableHead>
-                      <TableHead>{t("qa.entryModal.status")}</TableHead>
-                    </>
-                  ) : (
-                    <TableHead>{t("qa.entryModal.priority")}</TableHead>
-                  )}
-                  <TableHead>{t("qa.entryModal.fixStatus")}</TableHead>
-                  <TableHead>{t("qa.entries.media")}</TableHead>
-                  {isAutomationConfigured && <TableHead>{t("qa.entries.reproduce")}</TableHead>}
-                  <TableHead>{t("qa.entryModal.assignedTo")}</TableHead>
-                  <TableHead>{t("common.dateAdded")}</TableHead>
-                  <TableHead className="text-end">{t("common.lastUpdated")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredEntries.length === 0 ? (
+      <div className="project-scroll">
+        {layoutMode === "table" ? (
+          <div className="w-full min-w-0 overflow-hidden rounded-container border">
+            <div className="w-full min-w-0 overflow-x-auto">
+              <Table
+                className="w-full table-fixed text-sm [&_td]:px-4 [&_td]:py-3 [&_th]:px-4 [&_th]:py-3"
+                style={{ minWidth: `${tableMinWidthPx}px` }}
+              >
+                <colgroup>
+                  {tableColumnKeys.map((columnKey) => (
+                    <col key={columnKey} style={{ width: `${100 / tableColumnCount}%` }} />
+                  ))}
+                </colgroup>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={tableColumnCount} className="h-24 text-center">
-                      {t("qa.entries.noEntries")}
-                    </TableCell>
+                    <TableHead>{t("qa.entries.id")}</TableHead>
+                    <TableHead>{t("qa.entries.reporter")}</TableHead>
+                    <TableHead>{t("qa.entryModal.title")}</TableHead>
+                    <TableHead>{t("qa.entryModal.description")}</TableHead>
+                    <TableHead>{t("qa.entryModal.steps")}</TableHead>
+                    {tableType === "TEST_CASES" ? (
+                      <>
+                        <TableHead>{t("qa.entryModal.result")}</TableHead>
+                        <TableHead>{t("qa.entries.expectedShort")}</TableHead>
+                        <TableHead>{t("qa.entryModal.status")}</TableHead>
+                      </>
+                    ) : (
+                      <TableHead>{t("qa.entryModal.priority")}</TableHead>
+                    )}
+                    <TableHead>{t("qa.entryModal.fixStatus")}</TableHead>
+                    <TableHead>{t("qa.entries.media")}</TableHead>
+                    {isAutomationConfigured && <TableHead>{t("qa.entries.reproduce")}</TableHead>}
+                    <TableHead>{t("qa.entryModal.assignedTo")}</TableHead>
+                    <TableHead>{t("common.dateAdded")}</TableHead>
+                    <TableHead className="text-end">{t("common.lastUpdated")}</TableHead>
                   </TableRow>
-                ) : (
-                  filteredEntries.map((entry) => (
-                    <TableRow
-                      key={entry.id}
-                      className="group cursor-pointer hover:bg-muted/40"
-                      onClick={() => openEntryDetails(entry)}
-                    >
-                      <TableCell className="group/cell relative truncate font-medium" title={String(entry.id)}>
-                        <span className="block truncate pe-16">{entry.id}</span>
-                        {renderCellActions(entry)}
+                </TableHeader>
+                <TableBody>
+                  {filteredEntries.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={tableColumnCount} className="h-24 text-center">
+                        {t("qa.entries.noEntries")}
                       </TableCell>
-                      <TableCell className="group/cell relative truncate" title={entry.username || unknownLabel}>
-                        <span className="block truncate pe-16">{entry.username || unknownLabel}</span>
-                        {renderCellActions(entry)}
-                      </TableCell>
-                      <TableCell className="group/cell relative truncate font-medium" title={entry.title}>
-                        <span className="block truncate pe-16">{entry.title}</span>
-                        {renderCellActions(entry)}
-                      </TableCell>
-                      <TableCell className="group/cell relative truncate" title={entry.description || "-"}>
-                        <span className="block truncate pe-16">{entry.description || "-"}</span>
-                        {renderCellActions(entry)}
-                      </TableCell>
-                      <TableCell className="group/cell relative truncate" title={entry.stepsToReproduce || "-"}>
-                        <span className="block truncate pe-16">{entry.stepsToReproduce || "-"}</span>
-                        {renderCellActions(entry)}
-                      </TableCell>
-                      {tableType === "TEST_CASES" ? (
-                        <>
-                          <TableCell className="group/cell relative truncate" title={entry.result || "-"}>
-                            <span className="block truncate pe-16">{entry.result || "-"}</span>
-                            {renderCellActions(entry)}
-                          </TableCell>
-                          <TableCell className="group/cell relative truncate" title={entry.expectedResult || "-"}>
-                            <span className="block truncate pe-16">{entry.expectedResult || "-"}</span>
-                            {renderCellActions(entry)}
-                          </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredEntries.map((entry) => (
+                      <TableRow
+                        key={entry.id}
+                        className="group cursor-pointer hover:bg-muted/40"
+                        onClick={() => openEntryDetails(entry)}
+                      >
+                        <TableCell className="group/cell relative truncate font-medium" title={String(entry.id)}>
+                          <span className="block truncate pe-16">{entry.id}</span>
+                          {renderCellActions(entry)}
+                        </TableCell>
+                        <TableCell className="group/cell relative truncate" title={entry.username || unknownLabel}>
+                          <span className="block truncate pe-16">{entry.username || unknownLabel}</span>
+                          {renderCellActions(entry)}
+                        </TableCell>
+                        <TableCell className="group/cell relative truncate font-medium" title={entry.title}>
+                          <span className="block truncate pe-16">{entry.title}</span>
+                          {renderCellActions(entry)}
+                        </TableCell>
+                        <TableCell className="group/cell relative truncate" title={entry.description || "-"}>
+                          <span className="block truncate pe-16">{entry.description || "-"}</span>
+                          {renderCellActions(entry)}
+                        </TableCell>
+                        <TableCell className="group/cell relative truncate" title={entry.stepsToReproduce || "-"}>
+                          <span className="block truncate pe-16">{entry.stepsToReproduce || "-"}</span>
+                          {renderCellActions(entry)}
+                        </TableCell>
+                        {tableType === "TEST_CASES" ? (
+                          <>
+                            <TableCell className="group/cell relative truncate" title={entry.result || "-"}>
+                              <span className="block truncate pe-16">{entry.result || "-"}</span>
+                              {renderCellActions(entry)}
+                            </TableCell>
+                            <TableCell className="group/cell relative truncate" title={entry.expectedResult || "-"}>
+                              <span className="block truncate pe-16">{entry.expectedResult || "-"}</span>
+                              {renderCellActions(entry)}
+                            </TableCell>
+                            <TableCell className="group/cell relative">
+                              <QaStatusBadge value={entry.status} />
+                              {renderCellActions(entry)}
+                            </TableCell>
+                          </>
+                        ) : (
                           <TableCell className="group/cell relative">
                             <QaStatusBadge value={entry.status} />
                             {renderCellActions(entry)}
                           </TableCell>
-                        </>
-                      ) : (
-                        <TableCell className="group/cell relative">
-                          <QaStatusBadge value={entry.status} />
-                          {renderCellActions(entry)}
-                        </TableCell>
-                      )}
-                      <TableCell className="group/cell relative truncate">
-                        <QaStatusBadge value={entry.fixStatus || ""} />
-                        {renderCellActions(entry)}
-                      </TableCell>
-                      <TableCell className="group/cell relative">
-                        {entry.screenshotClipUrl ? (
-                          <button
-                            type="button"
-                            className="rounded border px-2 py-1 text-xs hover:bg-muted"
-                            onClick={(event) => openEntryDetailsFromImage(event, entry)}
-                          >
-                            {t("qa.entries.preview")}
-                          </button>
-                        ) : (
-                          <span className="text-muted-foreground text-xs">{t("qa.entries.noMedia")}</span>
                         )}
-                        {renderCellActions(entry)}
-                      </TableCell>
-                      {isAutomationConfigured && (
-                        <TableCell className="group/cell relative">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              triggerAutomationReproduce(entry.id);
-                            }}
-                          >
-                            {t("qa.entries.run")}
-                          </Button>
+                        <TableCell className="group/cell relative truncate">
+                          <QaStatusBadge value={entry.fixStatus || ""} />
                           {renderCellActions(entry)}
                         </TableCell>
-                      )}
-                      <TableCell className="group/cell relative truncate" title={entry.assignedTo || unassignedLabel}>
-                        <span className="block truncate pe-16">{entry.assignedTo || unassignedLabel}</span>
-                        {renderCellActions(entry)}
-                      </TableCell>
-                      <TableCell className="group/cell relative truncate">
-                        <span className="block truncate pe-16">
-                          {new Date(entry.createdAt).toLocaleDateString(localeCode)}
-                        </span>
-                        {renderCellActions(entry)}
-                      </TableCell>
-                      <TableCell className="group/cell relative truncate text-end">
-                        <span className="block truncate pe-16">
-                          {formatLastUpdated(entry.createdAt, entry.updatedAt)}
-                        </span>
-                        {renderCellActions(entry)}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
-      ) : filteredEntries.length === 0 ? (
-        <div className="rounded-md border py-14 text-center text-muted-foreground">{t("qa.entries.noEntries")}</div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 transition-all sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-          {filteredEntries.map((entry) => (
-            // biome-ignore lint/a11y/noStaticElementInteractions: Card click interaction is intentional for opening details.
-            <div
-              key={entry.id}
-              className="group relative flex h-full cursor-pointer flex-col gap-3 rounded-lg border bg-card p-4 text-card-foreground shadow-sm transition-colors hover:bg-muted/20"
-              onClick={() => openEntryDetails(entry)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  openEntryDetails(entry);
-                }
-              }}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <h3 className="truncate font-semibold" title={entry.title}>
-                  {entry.title}
-                </h3>
-                <div className="transition-opacity duration-200 group-focus-within:opacity-0 group-hover:opacity-0">
-                  <QaStatusBadge value={entry.status} />
-                </div>
-              </div>
-              <div className="pointer-events-none absolute end-3 top-3 flex items-center gap-1 opacity-0 transition-all duration-200 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className="h-8 w-8"
-                  aria-label={t("qa.entries.updateEntryAria", { title: entry.title })}
-                  onClick={(event) => handleStartEditEntry(event, entry)}
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className="h-8 w-8 text-destructive hover:text-destructive"
-                  aria-label={t("qa.entries.deleteEntryAria", { title: entry.title })}
-                  disabled={deletingEntryId === entry.id}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setEntryToDelete(entry);
-                  }}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-
-              <p className="truncate text-muted-foreground text-sm" title={entry.description || "-"}>
-                {entry.description || "-"}
-              </p>
-
-              <div className="grid gap-1 text-sm">
-                <p className="truncate" title={entry.username || unknownLabel}>
-                  <span className="text-muted-foreground">{t("qa.entries.reporterLabel")}:</span>{" "}
-                  {entry.username || unknownLabel}
-                </p>
-                <p className="truncate" title={entry.assignedTo || unassignedLabel}>
-                  <span className="text-muted-foreground">{t("qa.entries.assignedToLabel")}:</span>{" "}
-                  {entry.assignedTo || unassignedLabel}
-                </p>
-              </div>
-
-              {entry.screenshotClipUrl ? (
-                <button
-                  type="button"
-                  className="group relative overflow-hidden rounded-md border bg-muted text-left"
-                  onClick={(event) => openEntryDetailsFromImage(event, entry)}
-                >
-                  {isImageMedia(entry.screenshotClipUrl) ? (
-                    <div className="relative h-32 w-full">
-                      <Image
-                        src={entry.screenshotClipUrl}
-                        alt={entry.screenshotClipName || t("qa.entries.entryMediaPreviewAlt")}
-                        fill
-                        unoptimized
-                        className="object-cover transition-transform duration-200 group-hover:scale-[1.02]"
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex h-20 items-center justify-center px-2 text-muted-foreground text-sm">
-                      {truncateFallback(entry.screenshotClipName || t("qa.entries.openAttachment"), 36)}
-                    </div>
+                        <TableCell className="group/cell relative">
+                          {entry.screenshotClipUrl ? (
+                            <button
+                              type="button"
+                              className="rounded border px-2 py-1 text-xs hover:bg-muted"
+                              onClick={(event) => openEntryDetailsFromImage(event, entry)}
+                            >
+                              {t("qa.entries.preview")}
+                            </button>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">{t("qa.entries.noMedia")}</span>
+                          )}
+                          {renderCellActions(entry)}
+                        </TableCell>
+                        {isAutomationConfigured && (
+                          <TableCell className="group/cell relative">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                triggerAutomationReproduce(entry.id);
+                              }}
+                            >
+                              {t("qa.entries.run")}
+                            </Button>
+                            {renderCellActions(entry)}
+                          </TableCell>
+                        )}
+                        <TableCell className="group/cell relative truncate" title={entry.assignedTo || unassignedLabel}>
+                          <span className="block truncate pe-16">{entry.assignedTo || unassignedLabel}</span>
+                          {renderCellActions(entry)}
+                        </TableCell>
+                        <TableCell className="group/cell relative truncate">
+                          <span className="block truncate pe-16">
+                            {new Date(entry.createdAt).toLocaleDateString(localeCode)}
+                          </span>
+                          {renderCellActions(entry)}
+                        </TableCell>
+                        <TableCell className="group/cell relative truncate text-end">
+                          <span className="block truncate pe-16">
+                            {formatLastUpdated(entry.createdAt, entry.updatedAt)}
+                          </span>
+                          {renderCellActions(entry)}
+                        </TableCell>
+                      </TableRow>
+                    ))
                   )}
-                </button>
-              ) : null}
-
-              <div className="mt-auto flex items-center justify-between pt-1">
-                <span className="text-muted-foreground text-xs">{t("qa.entries.entryId", { id: entry.id })}</span>
-                {isAutomationConfigured && (
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        ) : filteredEntries.length === 0 ? (
+          <div className="rounded-container border py-14 text-center text-muted-foreground">
+            {t("qa.entries.noEntries")}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 transition-all sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+            {filteredEntries.map((entry) => (
+              // biome-ignore lint/a11y/noStaticElementInteractions: Card click interaction is intentional for opening details.
+              <div
+                key={entry.id}
+                className="group relative flex h-full cursor-pointer flex-col gap-3 rounded-container border bg-card p-4 text-card-foreground shadow-sm transition-colors hover:bg-muted/20"
+                onClick={() => openEntryDetails(entry)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    openEntryDetails(entry);
+                  }
+                }}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="truncate font-semibold" title={entry.title}>
+                    {entry.title}
+                  </h3>
+                  <div className="transition-opacity duration-200 group-focus-within:opacity-0 group-hover:opacity-0">
+                    <QaStatusBadge value={entry.status} />
+                  </div>
+                </div>
+                <div className="pointer-events-none absolute end-3 top-3 flex items-center gap-1 opacity-0 transition-all duration-200 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
                   <Button
-                    variant="outline"
-                    size="sm"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="h-8 w-8"
+                    aria-label={t("qa.entries.updateEntryAria", { title: entry.title })}
+                    onClick={(event) => handleStartEditEntry(event, entry)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="h-8 w-8 text-destructive hover:text-destructive"
+                    aria-label={t("qa.entries.deleteEntryAria", { title: entry.title })}
+                    disabled={deletingEntryId === entry.id}
                     onClick={(event) => {
                       event.stopPropagation();
-                      triggerAutomationReproduce(entry.id);
+                      setEntryToDelete(entry);
                     }}
                   >
-                    {t("qa.entries.run")}
+                    <Trash2 className="h-4 w-4" />
                   </Button>
-                )}
+                </div>
+
+                <p className="truncate text-muted-foreground text-sm" title={entry.description || "-"}>
+                  {entry.description || "-"}
+                </p>
+
+                <div className="grid gap-1 text-sm">
+                  <p className="truncate" title={entry.username || unknownLabel}>
+                    <span className="text-muted-foreground">{t("qa.entries.reporterLabel")}:</span>{" "}
+                    {entry.username || unknownLabel}
+                  </p>
+                  <p className="truncate" title={entry.assignedTo || unassignedLabel}>
+                    <span className="text-muted-foreground">{t("qa.entries.assignedToLabel")}:</span>{" "}
+                    {entry.assignedTo || unassignedLabel}
+                  </p>
+                </div>
+
+                {entry.screenshotClipUrl ? (
+                  <button
+                    type="button"
+                    className="group relative overflow-hidden rounded-md border bg-muted text-left"
+                    onClick={(event) => openEntryDetailsFromImage(event, entry)}
+                  >
+                    {isImageMedia(entry.screenshotClipUrl) ? (
+                      <div className="relative h-32 w-full">
+                        <Image
+                          src={entry.screenshotClipUrl}
+                          alt={entry.screenshotClipName || t("qa.entries.entryMediaPreviewAlt")}
+                          fill
+                          unoptimized
+                          className="object-cover transition-transform duration-200 group-hover:scale-[1.02]"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex h-20 items-center justify-center px-2 text-muted-foreground text-sm">
+                        {truncateFallback(entry.screenshotClipName || t("qa.entries.openAttachment"), 36)}
+                      </div>
+                    )}
+                  </button>
+                ) : null}
+
+                <div className="mt-auto flex items-center justify-between pt-1">
+                  <span className="text-muted-foreground text-xs">{t("qa.entries.entryId", { id: entry.id })}</span>
+                  {isAutomationConfigured && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        triggerAutomationReproduce(entry.id);
+                      }}
+                    >
+                      {t("qa.entries.run")}
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
 
       {selectedEntry ? (
         // biome-ignore lint/a11y/noStaticElementInteractions: Overlay click closes the details modal.
@@ -769,7 +784,7 @@ export function DataTable({ tableId, tableType }: { tableId: string; tableType: 
             }
           }}
         >
-          <div className="fade-in-0 zoom-in-95 relative h-[90vh] max-h-[90vh] w-full max-w-6xl animate-in overflow-hidden rounded-3xl border border-black/10 bg-white/80 text-foreground shadow-2xl shadow-black/20 backdrop-blur-xl transition-all duration-200 ease-out dark:border-white/10 dark:bg-zinc-900/70 dark:text-white dark:shadow-black/50">
+          <div className="fade-in-0 zoom-in-95 relative h-[90vh] max-h-[90vh] w-full max-w-6xl animate-in overflow-hidden rounded-container border border-black/10 bg-white/80 text-foreground shadow-2xl shadow-black/20 backdrop-blur-xl transition-all duration-200 ease-out dark:border-white/10 dark:bg-zinc-900/70 dark:text-white dark:shadow-black/50">
             <button
               type="button"
               onClick={closeEntryDetails}
@@ -914,7 +929,7 @@ export function DataTable({ tableId, tableType }: { tableId: string; tableType: 
                     </a>
                   )
                 ) : (
-                  <p className="rounded-md border border-black/20 bg-white/40 px-4 py-2 text-foreground/75 text-sm backdrop-blur-md dark:border-white/30 dark:bg-white/20 dark:text-white/75">
+                  <p className="rounded-container border border-black/20 bg-white/40 px-4 py-2 text-foreground/75 text-sm backdrop-blur-md dark:border-white/30 dark:bg-white/20 dark:text-white/75">
                     {t("qa.entries.noAttachment")}
                   </p>
                 )}

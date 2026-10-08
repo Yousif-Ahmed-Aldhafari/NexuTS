@@ -63,7 +63,7 @@ export function CardOverview() {
       <CardContent>
         <div className="space-y-4">
           <div className="grid w-full place-items-center">
-            <div className="relative flex aspect-8/5 w-full max-w-100 flex-col justify-between overflow-hidden rounded-xl bg-primary p-6">
+            <div className="relative flex aspect-8/5 w-full max-w-100 flex-col justify-between overflow-hidden rounded-container bg-primary p-6">
               <div className="flex items-start justify-between">
                 <SimpleIcon icon={siApple} className="size-5 fill-primary-foreground sm:size-8" />
               </div>

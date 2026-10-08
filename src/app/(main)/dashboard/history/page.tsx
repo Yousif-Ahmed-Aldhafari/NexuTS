@@ -34,7 +34,7 @@ export default function HistoryPage() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-[2.5rem] border border-slate-100 bg-white shadow-sm dark:border-slate-800 dark:bg-[#161B22]">
+      <div className="overflow-hidden rounded-container border border-slate-100 bg-white shadow-sm dark:border-slate-800 dark:bg-[#161B22]">
         <table className="w-full border-collapse text-start">
           <thead className="border-slate-100 border-b bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/50">
             <tr>

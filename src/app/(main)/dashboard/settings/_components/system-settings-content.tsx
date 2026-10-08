@@ -605,7 +605,7 @@ export function SystemSettingsContent({ mode = "page", tabQuery }: SystemSetting
           ))}
         </div>
 
-        <div className="relative col-span-12 overflow-hidden rounded-[2.5rem] border border-slate-100 bg-white shadow-sm lg:col-span-9 dark:border-slate-800 dark:bg-[#161B22]">
+        <div className="relative col-span-12 overflow-hidden rounded-container border border-slate-100 bg-white shadow-sm lg:col-span-9 dark:border-slate-800 dark:bg-[#161B22]">
           <motion.div
             ref={animatedContentRef}
             initial={false}
@@ -621,7 +621,7 @@ export function SystemSettingsContent({ mode = "page", tabQuery }: SystemSetting
                     <p className="text-slate-500 dark:text-slate-400">{t("settings.personalInfoSubtitle")}</p>
 
                     <div className="space-y-4">
-                      <div className="group flex items-center justify-between rounded-[1.5rem] border border-slate-100 bg-slate-50 p-5 dark:border-slate-800 dark:bg-[#0D1117]">
+                      <div className="group flex items-center justify-between rounded-container border border-slate-100 bg-slate-50 p-5 dark:border-slate-800 dark:bg-[#0D1117]">
                         <div className="flex items-center gap-4">
                           <div className="rounded-xl bg-blue-500/10 p-3 text-blue-500">
                             <User className="h-5 w-5" />
@@ -640,7 +640,7 @@ export function SystemSettingsContent({ mode = "page", tabQuery }: SystemSetting
                         </button>
                       </div>
 
-                      <div className="group flex items-center justify-between rounded-[1.5rem] border border-slate-100 bg-slate-50 p-5 dark:border-slate-800 dark:bg-[#0D1117]">
+                      <div className="group flex items-center justify-between rounded-container border border-slate-100 bg-slate-50 p-5 dark:border-slate-800 dark:bg-[#0D1117]">
                         <div className="flex items-center gap-4">
                           <div className="rounded-xl bg-blue-500/10 p-3 text-blue-500">
                             <Mail className="h-5 w-5" />
@@ -681,7 +681,7 @@ export function SystemSettingsContent({ mode = "page", tabQuery }: SystemSetting
                         )}
                       </div>
 
-                      <div className="group flex items-center justify-between rounded-[1.5rem] border border-slate-100 bg-slate-50 p-5 dark:border-slate-800 dark:bg-[#0D1117]">
+                      <div className="group flex items-center justify-between rounded-container border border-slate-100 bg-slate-50 p-5 dark:border-slate-800 dark:bg-[#0D1117]">
                         <div className="flex items-center gap-4">
                           <div className="rounded-xl bg-blue-500/10 p-3 text-blue-500">
                             <Key className="h-5 w-5" />
@@ -734,22 +734,22 @@ export function SystemSettingsContent({ mode = "page", tabQuery }: SystemSetting
                       </div>
                     </div>
 
-                    <div className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-5 dark:border-slate-800 dark:bg-[#0D1117]">
+                    <div className="rounded-container border border-slate-100 bg-slate-50 p-5 dark:border-slate-800 dark:bg-[#0D1117]">
                       <p className="font-semibold text-slate-900 text-sm dark:text-white">
                         {t("settings.totalUsers", { count: systemUsers.length })}
                       </p>
                     </div>
 
                     {isUsersLoading ? (
-                      <div className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-5 text-slate-500 text-sm dark:border-slate-800 dark:bg-[#0D1117] dark:text-slate-400">
+                      <div className="rounded-container border border-slate-100 bg-slate-50 p-5 text-slate-500 text-sm dark:border-slate-800 dark:bg-[#0D1117] dark:text-slate-400">
                         {t("common.loadingUsers")}
                       </div>
                     ) : usersError ? (
-                      <div className="rounded-[1.5rem] border border-red-200 bg-red-50 p-5 text-red-600 text-sm dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
+                      <div className="rounded-container border border-red-200 bg-red-50 p-5 text-red-600 text-sm dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
                         {usersError}
                       </div>
                     ) : systemUsers.length === 0 ? (
-                      <div className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-5 text-slate-500 text-sm dark:border-slate-800 dark:bg-[#0D1117] dark:text-slate-400">
+                      <div className="rounded-container border border-slate-100 bg-slate-50 p-5 text-slate-500 text-sm dark:border-slate-800 dark:bg-[#0D1117] dark:text-slate-400">
                         {t("settings.noUsersFound")}
                       </div>
                     ) : (
@@ -764,7 +764,7 @@ export function SystemSettingsContent({ mode = "page", tabQuery }: SystemSetting
                           return (
                             <div
                               key={systemUser.id}
-                              className="group relative rounded-[1.25rem] border border-slate-100 bg-slate-50 px-4 py-3 pe-28 dark:border-slate-800 dark:bg-[#0D1117]"
+                              className="group relative rounded-container border border-slate-100 bg-slate-50 px-4 py-3 pe-28 dark:border-slate-800 dark:bg-[#0D1117]"
                             >
                               <div
                                 className={cn(
@@ -844,7 +844,7 @@ export function SystemSettingsContent({ mode = "page", tabQuery }: SystemSetting
                 <div className="max-w-2xl space-y-8">
                   <section className="space-y-6">
                     <h3 className="font-bold text-xl dark:text-white">{t("settings.general")}</h3>
-                    <div className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-5 dark:border-slate-800 dark:bg-[#0D1117]">
+                    <div className="rounded-container border border-slate-100 bg-slate-50 p-5 dark:border-slate-800 dark:bg-[#0D1117]">
                       <div className="mb-3">
                         <p className="font-bold text-base dark:text-white">{t("settings.languageSection")}</p>
                         <p className="text-slate-500 text-sm dark:text-slate-400">{t("settings.languageHelp")}</p>

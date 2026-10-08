@@ -63,19 +63,19 @@ export function DataTable({ data: initialData }: { data: z.infer<typeof sectionS
         </div>
       </div>
       <TabsContent value="outline" className="relative flex flex-col gap-4 overflow-auto">
-        <div className="overflow-hidden rounded-lg border">
+        <div className="overflow-hidden rounded-container border">
           <DataTableNew dndEnabled table={table} columns={columns} onReorder={setData} />
         </div>
         <DataTablePagination table={table} />
       </TabsContent>
       <TabsContent value="past-performance" className="flex flex-col">
-        <div className="aspect-video w-full flex-1 rounded-lg border border-dashed" />
+        <div className="aspect-video w-full flex-1 rounded-container border border-dashed" />
       </TabsContent>
       <TabsContent value="key-personnel" className="flex flex-col">
-        <div className="aspect-video w-full flex-1 rounded-lg border border-dashed" />
+        <div className="aspect-video w-full flex-1 rounded-container border border-dashed" />
       </TabsContent>
       <TabsContent value="focus-documents" className="flex flex-col">
-        <div className="aspect-video w-full flex-1 rounded-lg border border-dashed" />
+        <div className="aspect-video w-full flex-1 rounded-container border border-dashed" />
       </TabsContent>
     </Tabs>
   );

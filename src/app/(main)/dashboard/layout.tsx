@@ -43,11 +43,11 @@ export default async function Layout({ children }: Readonly<{ children: ReactNod
   const sidebarSide = getLocaleDirection(language) === "rtl" ? "right" : "left";
 
   return (
-    <SidebarProvider defaultOpen={defaultOpen}>
+    <SidebarProvider defaultOpen={defaultOpen} className="h-dvh min-h-0 overflow-hidden">
       <AppSidebar side={sidebarSide} variant={variant} collapsible={collapsible} user={session?.user} />
       <SidebarInset
         className={cn(
-          "w-full min-w-0 max-w-full overflow-x-hidden",
+          "min-h-0 w-full min-w-0 max-w-full overflow-hidden",
           "[html[data-content-layout=centered]_&]:mx-auto! [html[data-content-layout=centered]_&]:max-w-screen-2xl!",
           // Keep inset spacing balanced per active sidebar side.
           "max-[113rem]:peer-data-[variant=inset]:peer-data-[side=left]:mr-2! min-[101rem]:peer-data-[variant=inset]:peer-data-[side=left]:peer-data-[state=collapsed]:mr-auto!",
@@ -82,7 +82,9 @@ export default async function Layout({ children }: Readonly<{ children: ReactNod
             </div>
           </div>
         </header>
-        <div className="h-full w-full min-w-0 max-w-full overflow-x-hidden p-4 md:p-6">{children}</div>
+        <div className="dashboard-content min-h-0 w-full min-w-0 max-w-full flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6">
+          {children}
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );

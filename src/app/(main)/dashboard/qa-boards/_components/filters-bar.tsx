@@ -10,7 +10,7 @@ export function FiltersBar({
   children,
   resultCount,
   onClear,
-  clearDisabled,
+  clearDisabled = true,
 }: {
   children: ReactNode;
   resultCount: number;
@@ -18,16 +18,18 @@ export function FiltersBar({
   clearDisabled?: boolean;
 }) {
   return (
-    <div className="rounded-md border bg-card p-3">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div className="flex flex-1 flex-wrap items-end gap-2">
-          <span className="text-muted-foreground text-xs">{resultCount} results</span>
-          {children}
+    <div className="rounded-container border bg-card p-3">
+      <div className="flex flex-wrap items-end justify-between gap-2 rtl:flex-row-reverse">
+        <div className="flex flex-1 flex-wrap items-end justify-start gap-2 rtl:justify-end">{children}</div>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="whitespace-nowrap text-muted-foreground text-xs">{resultCount} results</span>
+          {!clearDisabled && (
+            <Button variant="ghost" size="sm" className="h-9" onClick={onClear}>
+              <X className="mr-1 h-4 w-4" />
+              Clear Filters
+            </Button>
+          )}
         </div>
-        <Button variant="ghost" size="sm" className="h-9" onClick={onClear} disabled={clearDisabled}>
-          <X className="mr-1 h-4 w-4" />
-          Clear Filters
-        </Button>
       </div>
     </div>
   );

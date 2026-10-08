@@ -25,6 +25,15 @@ It combines admin dashboards with QA-focused project and test-case management fl
 - TanStack Table, React Hook Form, Zod, Zustand
 - Biome + Husky + lint-staged
 
+## Container styling
+
+Use `rounded-container` for cards, panels, dialogs, popovers, menus, and table wrappers.
+Its shared `--container-radius` token is defined in `src/app/globals.css` as `0.75rem`
+(12px at the default root font size) and stays consistent across theme presets.
+Use directional variants such as `rounded-t-container` for surfaces attached to a screen edge,
+and `rounded-[inherit]` for children that need to follow their parent's corners.
+Buttons, inputs, icon tiles, badges, circular avatars, and chart marks retain their existing radii.
+
 ## Project Structure
 
 ```text
