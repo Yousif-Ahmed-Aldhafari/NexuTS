@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
-import { LOCALE_VALUES, type AppLocale } from "@/lib/i18n";
+import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { type AppLocale, LOCALE_VALUES } from "@/lib/i18n";
 import { MIN_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH_MESSAGE } from "@/lib/password-rules";
 import { prisma } from "@/lib/prisma";
 
@@ -68,6 +69,14 @@ export async function PUT(req: Request) {
       const updated = await prisma.user.update({
         where: { id: user.id },
         data: { name: username },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true,
+          language: true,
+          role: true,
+        },
       });
 
       return NextResponse.json({ success: true, user: updated });
@@ -90,13 +99,16 @@ export async function PUT(req: Request) {
         return NextResponse.json({ error: "Confirm password does not match." }, { status: 400 });
       }
 
-      if (!user.password || user.password !== currentPassword) {
+      const { valid } = await verifyPassword(currentPassword, user.password);
+      if (!valid) {
         return NextResponse.json({ error: "Current password is incorrect." }, { status: 400 });
       }
 
+      const hashedPassword = await hashPassword(newPassword);
+
       await prisma.user.update({
         where: { id: user.id },
-        data: { password: newPassword },
+        data: { password: hashedPassword },
       });
 
       return NextResponse.json({ success: true });

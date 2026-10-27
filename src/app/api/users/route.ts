@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser, parseNumericId } from "@/lib/auth/current-user";
+import { hashPassword } from "@/lib/auth/password";
 import { isAdminEmail, isAdminRole, normalizeRole, resolveRoleFromEmail, USER_ROLES } from "@/lib/auth/roles";
 import { MIN_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH_MESSAGE } from "@/lib/password-rules";
 import { prisma } from "@/lib/prisma";
@@ -88,11 +89,12 @@ export async function POST(req: Request) {
     }
 
     const resolvedRole = isAdminEmail(email) ? USER_ROLES.ADMIN : normalizeRole(requestedRole);
+    const hashedPassword = await hashPassword(password);
     const createdUser = await prisma.user.create({
       data: {
         name,
         email,
-        password,
+        password: hashedPassword,
         role: resolvedRole,
       },
       select: {
@@ -192,9 +194,11 @@ export async function PUT(req: Request) {
         return NextResponse.json({ error: MIN_PASSWORD_LENGTH_MESSAGE }, { status: 400 });
       }
 
+      const hashedPassword = await hashPassword(newPassword);
+
       await prisma.user.update({
         where: { id: userId },
-        data: { password: newPassword },
+        data: { password: hashedPassword },
       });
 
       return NextResponse.json({ success: true });

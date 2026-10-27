@@ -5,8 +5,9 @@ import CredentialsProvider from "next-auth/providers/credentials";
 // We import bcryptjs dynamically or define our own basic comparison to avoid edge runtime issues with bcrypt.
 // Note: bcryptjs works but can be tricky in Next.js edge runtime.
 
-import { DEFAULT_LOCALE, LOCALE_VALUES, type AppLocale } from "./lib/i18n";
+import { hashPassword, verifyPassword } from "./lib/auth/password";
 import { isAdminEmail, isAdminRole, normalizeEmail, normalizeRole, USER_ROLES } from "./lib/auth/roles";
+import { type AppLocale, DEFAULT_LOCALE, LOCALE_VALUES } from "./lib/i18n";
 import { prisma } from "./lib/prisma";
 
 const isSupportedLocale = (value: unknown): value is AppLocale =>
@@ -65,9 +66,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           throw new Error("Invalid credentials");
         }
 
-        // For this demo, we do a raw comparison since we autocreated above. Use bcrypt.compare in prod.
-        if (user.password !== credentials.password) {
-          throw new Error("Incorrect password");
+        const candidatePassword = String(credentials.password);
+        const { valid, needsUpgrade } = await verifyPassword(candidatePassword, user.password);
+
+        if (!valid) {
+          throw new Error("Invalid credentials");
+        }
+
+        if (needsUpgrade) {
+          try {
+            const upgradedHash = await hashPassword(candidatePassword);
+            await prisma.user.updateMany({
+              where: {
+                id: user.id,
+                password: user.password,
+              },
+              data: {
+                password: upgradedHash,
+              },
+            });
+          } catch (upgradeError) {
+            console.error("[auth] Failed to upgrade legacy password", upgradeError);
+          }
         }
 
         if (isAdminEmail(user.email) && !isAdminRole(user.role)) {

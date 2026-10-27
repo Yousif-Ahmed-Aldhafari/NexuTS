@@ -16,7 +16,14 @@ export async function GET() {
     const projects = await prisma.project.findMany({
       include: {
         tables: true,
-        user: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
     });

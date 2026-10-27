@@ -13,7 +13,14 @@ export async function GET(_req: Request, { params }: RouteContext) {
     const project = await prisma.project.findUnique({
       where: { id: projectId },
       include: {
-        user: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+          },
+        },
         tables: {
           orderBy: { createdAt: "desc" },
         },

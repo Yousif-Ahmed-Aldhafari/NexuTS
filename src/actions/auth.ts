@@ -63,7 +63,7 @@ export async function authenticate(_prevState: string | undefined, formData: For
   });
 
   if (!user) {
-    return "This User Does not exits!";
+    return "Invalid credentials.";
   }
 
   try {
