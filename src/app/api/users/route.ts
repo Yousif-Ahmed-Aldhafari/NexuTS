@@ -83,7 +83,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: MIN_PASSWORD_LENGTH_MESSAGE }, { status: 400 });
     }
 
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true },
+    });
     if (existingUser) {
       return NextResponse.json({ error: "A user with this email already exists." }, { status: 409 });
     }

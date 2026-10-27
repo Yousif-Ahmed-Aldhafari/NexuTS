@@ -20,7 +20,6 @@ export async function GET() {
           select: {
             id: true,
             name: true,
-            email: true,
             image: true,
           },
         },
@@ -168,8 +167,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json(project, { status: 201 });
   } catch (error) {
-    const details = error instanceof Error ? error.message : "Unknown server error";
-    return NextResponse.json({ error: "Failed to add project", details }, { status: 500 });
+    console.error("[api/projects] Failed to add project:", error);
+    return NextResponse.json({ error: "Failed to add project" }, { status: 500 });
   }
 }
 

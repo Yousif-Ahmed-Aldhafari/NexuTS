@@ -43,6 +43,11 @@ export async function POST(req: Request) {
       data: {
         emailVerified: new Date(),
       },
+      select: {
+        id: true,
+        email: true,
+        emailVerified: true,
+      },
     });
 
     return NextResponse.json({ success: true, user: updated });

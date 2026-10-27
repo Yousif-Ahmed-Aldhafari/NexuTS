@@ -38,7 +38,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Only admins can create tables." }, { status: 403 });
     }
 
-    const createdBy = session?.user?.name || session?.user?.email || "Unknown";
+    const createdBy = session?.user?.name || session?.user?.email?.split("@")[0] || "Unknown";
     const body = await req.json();
     const { name, projectId, tableType } = body;
     const normalizedName = typeof name === "string" ? name.trim() : "";

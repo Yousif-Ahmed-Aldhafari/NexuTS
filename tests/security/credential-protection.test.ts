@@ -227,7 +227,6 @@ describe("Phase 1, Step 1.1: Credential Protection & Secure Authentication", () 
           select: {
             id: true,
             name: true,
-            email: true,
             image: true,
           },
         },

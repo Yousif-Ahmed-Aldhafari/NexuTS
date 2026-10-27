@@ -17,7 +17,6 @@ export async function GET(_req: Request, { params }: RouteContext) {
           select: {
             id: true,
             name: true,
-            email: true,
             image: true,
           },
         },
