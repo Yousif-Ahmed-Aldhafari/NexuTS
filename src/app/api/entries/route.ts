@@ -1,22 +1,23 @@
 import { NextResponse } from "next/server";
 
+import { requireAuth, resolveEntryAccess, resolveTableAccess } from "@/lib/auth/access-control";
 import { prisma } from "@/lib/prisma";
 import { validateAndNormalizeEntryInput } from "@/lib/qa-entry-schema";
 
 export async function POST(req: Request) {
+  const authCheck = await requireAuth();
+  if (!authCheck.authenticated) return authCheck.response;
+  const { user } = authCheck;
+
   try {
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
     const { tableId } = body;
 
-    if (!tableId) {
+    if (!tableId || typeof tableId !== "string") {
       return NextResponse.json({ error: "Table ID is required." }, { status: 400 });
     }
 
-    const table = await prisma.table.findUnique({
-      where: { id: tableId },
-      select: { tableType: true },
-    });
-
+    const table = await resolveTableAccess(tableId, user);
     if (!table) {
       return NextResponse.json({ error: "Table not found." }, { status: 404 });
     }
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
 
     const entry = await prisma.entry.create({
       data: {
-        tableId,
+        tableId: table.id,
         ...validated.data,
       },
     });
@@ -40,38 +41,32 @@ export async function POST(req: Request) {
 }
 
 export async function PUT(req: Request) {
+  const authCheck = await requireAuth();
+  if (!authCheck.authenticated) return authCheck.response;
+  const { user } = authCheck;
+
   try {
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
     const { id } = body;
 
     if (!id) {
       return NextResponse.json({ error: "Entry ID is required." }, { status: 400 });
     }
 
-    const entryId = parseInt(id, 10);
-    if (Number.isNaN(entryId)) {
+    const entryId = Number.parseInt(String(id), 10);
+    if (!Number.isSafeInteger(entryId) || entryId <= 0) {
       return NextResponse.json({ error: "Invalid Entry ID." }, { status: 400 });
     }
 
-    const existingEntry = await prisma.entry.findUnique({
-      where: { id: entryId },
-      select: { tableId: true },
-    });
-
+    const existingEntry = await resolveEntryAccess(entryId, user);
     if (!existingEntry) {
       return NextResponse.json({ error: "Entry not found." }, { status: 404 });
     }
 
-    const table = await prisma.table.findUnique({
-      where: { id: existingEntry.tableId },
-      select: { tableType: true },
-    });
-
-    if (!table) {
-      return NextResponse.json({ error: "Table not found." }, { status: 404 });
-    }
-
-    const validated = validateAndNormalizeEntryInput(body, table.tableType as "TEST_CASES" | "ISSUE_LOGS");
+    const validated = validateAndNormalizeEntryInput(
+      body,
+      existingEntry.table.tableType as "TEST_CASES" | "ISSUE_LOGS",
+    );
     if (!validated.data) {
       return NextResponse.json({ error: validated.error || "Invalid entry payload." }, { status: 400 });
     }
@@ -89,15 +84,24 @@ export async function PUT(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const authCheck = await requireAuth();
+  if (!authCheck.authenticated) return authCheck.response;
+  const { user } = authCheck;
+
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
 
     if (!id) return NextResponse.json({ error: "ID is required" }, { status: 400 });
 
-    const entryId = parseInt(id, 10);
-    if (Number.isNaN(entryId)) {
+    const entryId = Number.parseInt(id, 10);
+    if (!Number.isSafeInteger(entryId) || entryId <= 0) {
       return NextResponse.json({ error: "Invalid Entry ID." }, { status: 400 });
+    }
+
+    const existingEntry = await resolveEntryAccess(entryId, user);
+    if (!existingEntry) {
+      return NextResponse.json({ error: "Entry not found." }, { status: 404 });
     }
 
     // Soft Delete
