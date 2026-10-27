@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getCurrentUser, parseNumericId } from "@/lib/auth/current-user";
 import { hashPassword } from "@/lib/auth/password";
-import { isAdminEmail, isAdminRole, normalizeRole, resolveRoleFromEmail, USER_ROLES } from "@/lib/auth/roles";
+import { isAdminRole, isValidRole, normalizeRole, USER_ROLES } from "@/lib/auth/roles";
 import { MIN_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH_MESSAGE } from "@/lib/password-rules";
 import { prisma } from "@/lib/prisma";
 
@@ -73,7 +73,6 @@ export async function POST(req: Request) {
     const name = typeof body?.name === "string" ? body.name.trim() : "";
     const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
     const password = typeof body?.password === "string" ? body.password : "";
-    const requestedRole = typeof body?.role === "string" ? body.role : USER_ROLES.USER;
 
     if (!name || !email || !password) {
       return NextResponse.json({ error: "Name, email, and password are required." }, { status: 400 });
@@ -83,6 +82,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: MIN_PASSWORD_LENGTH_MESSAGE }, { status: 400 });
     }
 
+    if (body?.role !== undefined && !isValidRole(body.role)) {
+      return NextResponse.json({ error: "Invalid role specified." }, { status: 400 });
+    }
+    const resolvedRole = isValidRole(body?.role) ? body.role : USER_ROLES.USER;
+
     const existingUser = await prisma.user.findUnique({
       where: { email },
       select: { id: true },
@@ -91,7 +95,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "A user with this email already exists." }, { status: 409 });
     }
 
-    const resolvedRole = isAdminEmail(email) ? USER_ROLES.ADMIN : normalizeRole(requestedRole);
     const hashedPassword = await hashPassword(password);
     const createdUser = await prisma.user.create({
       data: {
@@ -142,15 +145,28 @@ export async function PUT(req: Request) {
     if (action === "update-user") {
       const nextName = typeof body?.name === "string" ? body.name.trim() : "";
       const nextEmail = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
-      const requestedRole = typeof body?.role === "string" ? body.role : targetUser.role;
-      const normalizedRequestedRole = normalizeRole(requestedRole);
 
       if (!nextName || !nextEmail) {
         return NextResponse.json({ error: "Name and email are required." }, { status: 400 });
       }
 
-      if (isSelfTarget && normalizedRequestedRole !== normalizeRole(targetUser.role)) {
+      if (body?.role !== undefined && !isValidRole(body.role)) {
+        return NextResponse.json({ error: "Invalid role value." }, { status: 400 });
+      }
+
+      const nextRole = isValidRole(body?.role) ? body.role : targetUser.role;
+
+      if (isSelfTarget && nextRole !== targetUser.role) {
         return NextResponse.json({ error: "You cannot change your own role." }, { status: 403 });
+      }
+
+      if (targetUser.role === USER_ROLES.ADMIN && nextRole === USER_ROLES.USER) {
+        const adminCount = await prisma.user.count({
+          where: { role: USER_ROLES.ADMIN },
+        });
+        if (adminCount <= 1) {
+          return NextResponse.json({ error: "Cannot demote the last remaining administrator." }, { status: 400 });
+        }
       }
 
       const duplicateUser = await prisma.user.findFirst({
@@ -163,14 +179,6 @@ export async function PUT(req: Request) {
       if (duplicateUser) {
         return NextResponse.json({ error: "A user with this email already exists." }, { status: 409 });
       }
-
-      const enforcedRole = resolveRoleFromEmail(nextEmail);
-      const nextRole =
-        enforcedRole === USER_ROLES.ADMIN
-          ? USER_ROLES.ADMIN
-          : normalizedRequestedRole === USER_ROLES.ADMIN
-            ? USER_ROLES.ADMIN
-            : USER_ROLES.USER;
 
       const updatedUser = await prisma.user.update({
         where: { id: userId },
@@ -212,12 +220,20 @@ export async function PUT(req: Request) {
         return NextResponse.json({ error: "You cannot change your own role." }, { status: 403 });
       }
 
-      const requestedRole = normalizeRole(typeof body?.role === "string" ? body.role : USER_ROLES.USER);
-      const nextRole = isAdminEmail(targetUser.email)
-        ? USER_ROLES.ADMIN
-        : requestedRole === USER_ROLES.ADMIN
-          ? USER_ROLES.ADMIN
-          : USER_ROLES.USER;
+      if (!isValidRole(body?.role)) {
+        return NextResponse.json({ error: "Invalid role value." }, { status: 400 });
+      }
+
+      const nextRole = body.role;
+
+      if (targetUser.role === USER_ROLES.ADMIN && nextRole === USER_ROLES.USER) {
+        const adminCount = await prisma.user.count({
+          where: { role: USER_ROLES.ADMIN },
+        });
+        if (adminCount <= 1) {
+          return NextResponse.json({ error: "Cannot demote the last remaining administrator." }, { status: 400 });
+        }
+      }
 
       const updatedUser = await prisma.user.update({
         where: { id: userId },
@@ -253,18 +269,24 @@ export async function DELETE(req: Request) {
 
     const targetUser = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true },
+      select: { id: true, email: true, role: true },
     });
 
     if (!targetUser) {
       return NextResponse.json({ error: "User not found." }, { status: 404 });
     }
 
-    if (isAdminEmail(targetUser.email)) {
-      return NextResponse.json(
-        { error: "This admin account cannot be deleted because it is protected by email policy." },
-        { status: 403 },
-      );
+    if (targetUser.id === adminCheck.user.id) {
+      return NextResponse.json({ error: "You cannot delete your own account." }, { status: 403 });
+    }
+
+    if (targetUser.role === USER_ROLES.ADMIN) {
+      const adminCount = await prisma.user.count({
+        where: { role: USER_ROLES.ADMIN },
+      });
+      if (adminCount <= 1) {
+        return NextResponse.json({ error: "Cannot delete the last remaining administrator." }, { status: 400 });
+      }
     }
 
     await prisma.user.delete({ where: { id: userId } });

@@ -13,7 +13,8 @@
     "clean:generated": "node -e \"require('fs').rmSync('.next',{ recursive: true, force: true })\"",
     "validate:clean": "npm run clean:generated && npm run format && npm run lint && npx tsc --noEmit && npm run build",
     "prepare": "husky",
-    "generate:presets": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' src/scripts/generate-theme-presets.ts"
+    "generate:presets": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' src/scripts/generate-theme-presets.ts",
+    "admin:provision": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' src/scripts/provision-admin.ts"
   },
   "lint-staged": {
     "*.{js,ts,jsx,tsx}": ["biome check --write --no-errors-on-unmatched"]

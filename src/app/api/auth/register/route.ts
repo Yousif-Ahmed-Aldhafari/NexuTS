@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { hashPassword } from "@/lib/auth/password";
-import { normalizeEmail, resolveRoleFromEmail } from "@/lib/auth/roles";
+import { normalizeEmail, USER_ROLES } from "@/lib/auth/roles";
 import { MIN_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH_MESSAGE } from "@/lib/password-rules";
 import { prisma } from "@/lib/prisma";
 
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
         email: normalizedEmail,
         password: hashedPassword,
         name: username,
-        role: resolveRoleFromEmail(normalizedEmail),
+        role: USER_ROLES.USER,
       },
       select: {
         id: true,

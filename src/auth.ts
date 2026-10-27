@@ -6,7 +6,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 // Note: bcryptjs works but can be tricky in Next.js edge runtime.
 
 import { hashPassword, verifyPassword } from "./lib/auth/password";
-import { isAdminEmail, isAdminRole, normalizeEmail, normalizeRole, USER_ROLES } from "./lib/auth/roles";
+import { normalizeEmail, normalizeRole } from "./lib/auth/roles";
 import { type AppLocale, DEFAULT_LOCALE, LOCALE_VALUES } from "./lib/i18n";
 import { prisma } from "./lib/prisma";
 
@@ -90,13 +90,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
         }
 
-        if (isAdminEmail(user.email) && !isAdminRole(user.role)) {
-          user = await prisma.user.update({
-            where: { id: user.id },
-            data: { role: USER_ROLES.ADMIN },
-          });
-        }
-
         return {
           id: String(user.id),
           email: user.email,
@@ -142,17 +135,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               : null;
 
         if (dbUser) {
-          let currentRole = normalizeRole(dbUser.role);
-          if (isAdminEmail(dbUser.email) && !isAdminRole(dbUser.role)) {
-            const updatedUser = await prisma.user.update({
-              where: { id: dbUser.id },
-              data: { role: USER_ROLES.ADMIN },
-              select: { role: true },
-            });
-            currentRole = normalizeRole(updatedUser.role);
-          }
-
-          token.role = currentRole;
+          token.role = normalizeRole(dbUser.role);
           token.sub = String(dbUser.id);
           token.email = dbUser.email ?? token.email;
           token.language = isSupportedLocale(dbUser.language) ? dbUser.language : DEFAULT_LOCALE;

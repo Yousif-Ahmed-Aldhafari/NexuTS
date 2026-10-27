@@ -1,5 +1,5 @@
 import { hashPassword, isBcryptHash, verifyPassword } from "../../src/lib/auth/password";
-import { isAdminEmail, isAdminRole, resolveRoleFromEmail, USER_ROLES } from "../../src/lib/auth/roles";
+import { isAdminRole, isValidRole, normalizeRole, USER_ROLES } from "../../src/lib/auth/roles";
 import { prisma } from "../../src/lib/prisma";
 import assert from "node:assert";
 import test, { after, before, describe } from "node:test";
@@ -253,11 +253,15 @@ describe("Phase 1, Step 1.1: Credential Protection & Secure Authentication", () 
   });
 
   test("Scenario 8: Non-password authentication and session role behaviors remain functional", () => {
-    assert.strictEqual(isAdminEmail("yousif.aldhafari@gmail.com"), true);
-    assert.strictEqual(isAdminEmail("arbitrary.user@example.com"), false);
     assert.strictEqual(isAdminRole(USER_ROLES.ADMIN), true);
     assert.strictEqual(isAdminRole(USER_ROLES.USER), false);
-    assert.strictEqual(resolveRoleFromEmail("yousif.aldhafari@gmail.com"), USER_ROLES.ADMIN);
-    assert.strictEqual(resolveRoleFromEmail("other@example.com"), USER_ROLES.USER);
+    assert.strictEqual(isAdminRole(null), false);
+    assert.strictEqual(isAdminRole(undefined), false);
+    assert.strictEqual(normalizeRole(USER_ROLES.ADMIN), USER_ROLES.ADMIN);
+    assert.strictEqual(normalizeRole(USER_ROLES.USER), USER_ROLES.USER);
+    assert.strictEqual(normalizeRole("UNKNOWN_ROLE"), USER_ROLES.USER);
+    assert.strictEqual(isValidRole(USER_ROLES.ADMIN), true);
+    assert.strictEqual(isValidRole(USER_ROLES.USER), true);
+    assert.strictEqual(isValidRole("SUPERADMIN"), false);
   });
 });

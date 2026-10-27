@@ -5,25 +5,30 @@ export const USER_ROLES = {
 
 export type UserRole = (typeof USER_ROLES)[keyof typeof USER_ROLES];
 
-const ADMIN_EMAILS = new Set(["yousif.aldhafari@gmail.com"]);
+export const VALID_ROLES: readonly UserRole[] = [USER_ROLES.ADMIN, USER_ROLES.USER];
 
-export function normalizeEmail(email: string | null | undefined) {
+export function normalizeEmail(email: string | null | undefined): string {
   return typeof email === "string" ? email.trim().toLowerCase() : "";
 }
 
-export function isAdminEmail(email: string | null | undefined) {
-  const normalized = normalizeEmail(email);
-  return normalized.length > 0 && ADMIN_EMAILS.has(normalized);
+/**
+ * Validates that an unknown value strictly matches one of the defined system roles.
+ */
+export function isValidRole(role: unknown): role is UserRole {
+  return typeof role === "string" && (VALID_ROLES as readonly string[]).includes(role);
 }
 
-export function resolveRoleFromEmail(email: string | null | undefined): UserRole {
-  return isAdminEmail(email) ? USER_ROLES.ADMIN : USER_ROLES.USER;
-}
-
+/**
+ * Normalizes an unknown or null role value to a valid UserRole.
+ * Defaults to USER if not strictly ADMIN.
+ */
 export function normalizeRole(role: string | null | undefined): UserRole {
   return role === USER_ROLES.ADMIN ? USER_ROLES.ADMIN : USER_ROLES.USER;
 }
 
-export function isAdminRole(role: string | null | undefined) {
+/**
+ * Checks if a normalized role represents an administrator.
+ */
+export function isAdminRole(role: string | null | undefined): boolean {
   return normalizeRole(role) === USER_ROLES.ADMIN;
 }

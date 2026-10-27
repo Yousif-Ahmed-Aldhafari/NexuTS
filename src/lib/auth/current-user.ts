@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
-import { isAdminEmail, isAdminRole, USER_ROLES } from "./roles";
+import { isAdminRole } from "./roles";
 
 export const parseNumericId = (value: string | null | undefined) => {
   if (!value) return null;
@@ -28,13 +28,6 @@ export async function getCurrentUser() {
 
   if (!dbUser) {
     return null;
-  }
-
-  if (isAdminEmail(dbUser.email) && !isAdminRole(dbUser.role)) {
-    dbUser = await prisma.user.update({
-      where: { id: dbUser.id },
-      data: { role: USER_ROLES.ADMIN },
-    });
   }
 
   return dbUser;
