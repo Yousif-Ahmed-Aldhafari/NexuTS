@@ -162,3 +162,4 @@ WHERE "tableId" IN (SELECT "id" FROM "Table" WHERE "tableType" = 'ISSUE_LOGS')
 - Foreign key constraint enforcement (`PRAGMA foreign_keys = ON;` per-connection enforcement in Prisma client).
 - Cascade deletion audit for soft-deleted entries vs hard-deleted parent tables.
 - Verification of orphan record cleanup in legacy databases.
+

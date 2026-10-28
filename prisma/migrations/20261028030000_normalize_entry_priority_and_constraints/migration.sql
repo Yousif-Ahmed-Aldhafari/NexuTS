@@ -56,3 +56,4 @@ WHEN NEW."fixStatus" IS NOT NULL AND NEW."fixStatus" != '' AND NEW."fixStatus" N
 BEGIN
   SELECT RAISE(ABORT, 'INVALID_FIX_STATUS: fixStatus must be NEEDS_FIX, NEEDS_RETEST, or FIXED');
 END;
+
