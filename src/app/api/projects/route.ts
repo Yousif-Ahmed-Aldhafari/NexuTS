@@ -2,32 +2,46 @@ import { NextResponse } from "next/server";
 
 import { canManageProject, requireAuth } from "@/lib/auth/access-control";
 import { projectInput, secureMutation } from "@/lib/auth/mutation-guard";
+import { buildPaginatedResponse, parsePaginationParams } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
 
 const normalizeText = (value: string) => value.trim().toLowerCase();
 
-export async function GET() {
+export async function GET(req: Request) {
   const authCheck = await requireAuth();
   if (!authCheck.authenticated) return authCheck.response;
   const { user } = authCheck;
 
   try {
+    const { searchParams } = new URL(req.url);
+    const paginationResult = parsePaginationParams(searchParams);
+    if (!paginationResult.ok) {
+      return NextResponse.json({ error: paginationResult.error }, { status: 400 });
+    }
+    const { page, limit, skip, take } = paginationResult.params;
+    const format = searchParams.get("format");
+
     const whereClause = user.isAdmin ? {} : { userId: user.id };
-    const projects = await prisma.project.findMany({
-      where: whereClause,
-      include: {
-        tables: true,
-        user: {
-          select: {
-            id: true,
-            name: true,
-            image: true,
+    const [total, projects] = await Promise.all([
+      prisma.project.count({ where: whereClause }),
+      prisma.project.findMany({
+        where: whereClause,
+        include: {
+          tables: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
+            },
           },
         },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-    return NextResponse.json(projects);
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        skip,
+        take,
+      }),
+    ]);
+    return buildPaginatedResponse(projects, total, { page, limit }, format);
   } catch (_error) {
     return NextResponse.json({ error: "Failed to fetch projects" }, { status: 500 });
   }

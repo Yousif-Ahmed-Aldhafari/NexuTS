@@ -6,6 +6,8 @@ import Image from "next/image";
 
 import {
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Copy,
   CopyPlus,
   Download,
@@ -123,6 +125,10 @@ export function DataTable({
   );
 
   const [entries, setEntries] = useState<Entry[]>([]);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(50);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalEntries, setTotalEntries] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [duplicatingEntry, setDuplicatingEntry] = useState<Entry | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -145,12 +151,43 @@ export function DataTable({
   const [entryToDelete, setEntryToDelete] = useState<Entry | null>(null);
   const [deletingEntryId, setDeletingEntryId] = useState<number | null>(null);
 
-  const fetchEntries = useCallback(async () => {
-    const response = await fetch(`/api/tables/${tableId}/entries`);
-    if (response.ok) {
-      setEntries(await response.json());
-    }
-  }, [tableId]);
+  const fetchEntries = useCallback(
+    async (targetPage = page, targetLimit = limit) => {
+      const params = new URLSearchParams({
+        page: String(targetPage),
+        limit: String(targetLimit),
+      });
+      const response = await fetch(`/api/tables/${tableId}/entries?${params.toString()}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (Array.isArray(data)) {
+          setEntries(data);
+          setTotalEntries(data.length);
+          setTotalPages(1);
+        } else if (data && Array.isArray(data.items)) {
+          setEntries(data.items);
+          if (data.pagination) {
+            setPage(data.pagination.page);
+            setTotalPages(data.pagination.totalPages);
+            setTotalEntries(data.pagination.total);
+          }
+        }
+      }
+    },
+    [tableId, page, limit],
+  );
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > totalPages || newPage === page) return;
+    setPage(newPage);
+    void fetchEntries(newPage, limit);
+  };
+
+  const handleLimitChange = (newLimit: number) => {
+    setLimit(newLimit);
+    setPage(1);
+    void fetchEntries(1, newLimit);
+  };
 
   useEffect(() => {
     fetchEntries();
@@ -357,34 +394,69 @@ export function DataTable({
     }
   };
 
-  const exportToCSV = () => {
+  const fetchAllExportRows = async (): Promise<string[][]> => {
+    let allItems: Entry[] = [];
+    let p = 1;
+    let hasMore = true;
+    while (hasMore) {
+      const params = new URLSearchParams({
+        page: String(p),
+        limit: "100",
+      });
+      const res = await fetch(`/api/tables/${tableId}/entries?${params.toString()}`);
+      if (!res.ok) break;
+      const data = await res.json();
+      const items: Entry[] = Array.isArray(data) ? data : data.items || [];
+      allItems = allItems.concat(items);
+      hasMore = Boolean(data.pagination?.hasMore);
+      p++;
+      if (p > 50) break;
+    }
+    const filtered = allItems.filter((entry) => {
+      const normalizedQuery = searchQuery.trim().toLowerCase();
+      const matchesSearch =
+        !normalizedQuery || [entry.title, entry.description].join(" ").toLowerCase().includes(normalizedQuery);
+      const matchesAssignedTo =
+        assignedToFilter === "ALL" || (entry.assignedTo || unassignedLabel) === assignedToFilter;
+      const matchesUsername = usernameFilter === "ALL" || (entry.username || unknownLabel) === usernameFilter;
+      const matchesStatus = tableType !== "TEST_CASES" || statusFilter === "ALL" || entry.status === statusFilter;
+      const matchesPriority = tableType !== "ISSUE_LOGS" || priorityFilter === "ALL" || entry.status === priorityFilter;
+      return matchesSearch && matchesAssignedTo && matchesUsername && matchesStatus && matchesPriority;
+    });
+    return filtered.map((entry) => exportColumns.map((col) => col.value(entry)));
+  };
+
+  const exportToCSV = async () => {
+    const rows = totalEntries > entries.length ? await fetchAllExportRows() : exportRows;
     const baseFileName = tableType === "TEST_CASES" ? "test-cases" : "issue-logs";
     downloadCsv({
       headers: exportHeaders,
-      rows: exportRows,
+      rows,
       fileName: `${baseFileName}-export.csv`,
     });
     showSuccessMessage(t("qa.entries.exportCsvDownloaded"));
   };
 
-  const exportToPDF = () => {
+  const exportToPDF = async () => {
+    const rows = totalEntries > entries.length ? await fetchAllExportRows() : exportRows;
     const baseFileName = tableType === "TEST_CASES" ? "test-cases" : "issue-logs";
     const title =
       tableType === "TEST_CASES" ? t("qa.entries.exportTitleTestCases") : t("qa.entries.exportTitleIssueLogs");
     downloadPdf({
       title,
       headers: exportHeaders,
-      rows: exportRows,
+      rows,
       fileName: `${baseFileName}-export.pdf`,
     });
     showSuccessMessage(t("qa.entries.exportPdfDownloaded"));
   };
 
-  const exportToSheet = () => {
+  const exportToSheet = async () => {
+    const rows = totalEntries > entries.length ? await fetchAllExportRows() : exportRows;
     const isTestCases = tableType === "TEST_CASES";
     downloadXlsx({
       headers: exportHeaders,
-      rows: exportRows,
+      rows,
       sheetName: isTestCases ? t("qa.entries.testCases") : t("qa.entries.issueLogs"),
       fileName: `${isTestCases ? "test-cases" : "issue-logs"}-export.xlsx`,
     });
@@ -854,6 +926,50 @@ export function DataTable({
           </div>
         )}
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex flex-wrap items-center justify-between gap-4 border-slate-200 border-t px-2 py-3 dark:border-slate-800">
+          <div className="flex items-center gap-4 text-muted-foreground text-sm">
+            <span>
+              {t("table.pageOf", { current: page, total: totalPages })} ({totalEntries} {t("qa.entries.results")})
+            </span>
+            <div className="flex items-center gap-1">
+              <span>{t("table.rowsPerPage")}:</span>
+              <select
+                value={limit}
+                onChange={(e) => handleLimitChange(Number(e.target.value))}
+                className="rounded border border-slate-200 bg-transparent px-2 py-1 text-xs dark:border-slate-800"
+              >
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => handlePageChange(page - 1)}
+              aria-label={t("table.previous")}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span>{t("table.previous")}</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= totalPages}
+              onClick={() => handlePageChange(page + 1)}
+              aria-label={t("table.next")}
+            >
+              <span>{t("table.next")}</span>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {selectedEntry ? (
         // biome-ignore lint/a11y/noStaticElementInteractions: Overlay click closes the details modal.

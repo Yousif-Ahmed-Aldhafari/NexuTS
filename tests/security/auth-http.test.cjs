@@ -222,6 +222,51 @@ describe("Step 1.5 actual production HTTP security", () => {
     const entry = await response.json();
     assert.equal((await request(`/api/entries?id=${entry.id}`, "DELETE", memberCookie)).status, 404);
     assert.equal((await request(`/api/entries?id=${entry.id}`, "DELETE", adminCookie)).status, 200);
+
+    // Step 2.2: Bounded pagination and performance endpoints verification
+    // 1. Projects pagination
+    assert.equal((await request("/api/projects?page=invalid", "GET", adminCookie)).status, 400);
+    assert.equal((await request("/api/projects?limit=999", "GET", adminCookie)).status, 400);
+    const projRes = await request("/api/projects?page=1&limit=5", "GET", adminCookie);
+    assert.equal(projRes.status, 200);
+    const projData = await projRes.json();
+    assert.ok(Array.isArray(projData.items));
+    assert.equal(projData.pagination.page, 1);
+    assert.equal(projData.pagination.limit, 5);
+    assert.equal(typeof projData.pagination.total, "number");
+    assert.ok(projRes.headers.get("X-Total-Count"));
+    assert.equal(projRes.headers.get("X-Page"), "1");
+
+    // Projects format=array fallback
+    const projArrayRes = await request("/api/projects?format=array", "GET", adminCookie);
+    assert.equal(projArrayRes.status, 200);
+    assert.ok(Array.isArray(await projArrayRes.json()));
+
+    // 2. Tables pagination
+    assert.equal((await request("/api/tables", "GET", adminCookie)).status, 400);
+    assert.equal((await request(`/api/tables?projectId=${projectId}&page=0`, "GET", adminCookie)).status, 400);
+    const tablesRes = await request(`/api/tables?projectId=${projectId}&page=1&limit=10`, "GET", adminCookie);
+    assert.equal(tablesRes.status, 200);
+    const tablesData = await tablesRes.json();
+    assert.ok(Array.isArray(tablesData.items));
+    assert.equal(tablesData.pagination.page, 1);
+
+    // 3. Entries pagination via /api/tables/[tableId]/entries
+    assert.equal((await request("/api/tables/nonexistent-id/entries", "GET", adminCookie)).status, 404);
+    assert.equal((await request(`/api/tables/${tableId}/entries?limit=999`, "GET", adminCookie)).status, 400);
+    const entriesRes = await request(`/api/tables/${tableId}/entries?page=1&limit=10`, "GET", adminCookie);
+    assert.equal(entriesRes.status, 200);
+    const entriesData = await entriesRes.json();
+    assert.ok(Array.isArray(entriesData.items));
+    assert.equal(entriesData.pagination.page, 1);
+
+    // 4. Entries pagination via GET /api/entries?tableId=...
+    assert.equal((await request("/api/entries", "GET", adminCookie)).status, 400);
+    const directEntriesRes = await request(`/api/entries?tableId=${tableId}&page=1&limit=10`, "GET", adminCookie);
+    assert.equal(directEntriesRes.status, 200);
+    const directEntriesData = await directEntriesRes.json();
+    assert.ok(Array.isArray(directEntriesData.items));
+    assert.equal(directEntriesData.pagination.page, 1);
   });
   test("password change requires current password and revokes the real old session cookie", async () => {
     const body = {

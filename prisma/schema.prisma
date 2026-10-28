@@ -40,6 +40,7 @@ model Account {
   session_state     String?
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 model Session {
@@ -48,6 +49,7 @@ model Session {
   userId       Int
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
 }
 
 // --- TEST CASE MANAGEMENT MODELS ---
@@ -63,6 +65,7 @@ model Project {
   tables      Table[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  @@index([userId])
 }
 
 model Table {
@@ -75,6 +78,7 @@ model Table {
   entries   Entry[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  @@index([projectId])
 }
 
 model Entry {
@@ -95,6 +99,7 @@ model Entry {
   expectedResult     String?
   screenshotClipName String?
   screenshotClipUrl  String?
+  @@index([tableId, isDeleted])
 }
 
 model VerificationProof {

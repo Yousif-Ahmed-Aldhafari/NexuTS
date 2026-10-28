@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireAuth, resolveProjectAccess, resolveTableAccess } from "@/lib/auth/access-control";
 import { secureMutation, tableInput } from "@/lib/auth/mutation-guard";
+import { buildPaginatedResponse, parsePaginationParams } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
 
 const TABLE_TYPES = ["TEST_CASES", "ISSUE_LOGS"] as const;
@@ -25,12 +26,25 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    const tables = await prisma.table.findMany({
-      where: { projectId },
-      orderBy: { createdAt: "desc" },
-    });
+    const paginationResult = parsePaginationParams(searchParams);
+    if (!paginationResult.ok) {
+      return NextResponse.json({ error: paginationResult.error }, { status: 400 });
+    }
+    const { page, limit, skip, take } = paginationResult.params;
+    const format = searchParams.get("format");
 
-    return NextResponse.json(tables);
+    const whereClause = { projectId };
+    const [total, tables] = await Promise.all([
+      prisma.table.count({ where: whereClause }),
+      prisma.table.findMany({
+        where: whereClause,
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        skip,
+        take,
+      }),
+    ]);
+
+    return buildPaginatedResponse(tables, total, { page, limit }, format);
   } catch (_error) {
     return NextResponse.json({ error: "Failed to fetch tables" }, { status: 500 });
   }

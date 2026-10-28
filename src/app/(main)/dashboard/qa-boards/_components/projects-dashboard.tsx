@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 
-import { ExternalLink, Pencil, PlusCircle, Trash2, User as UserIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, Pencil, PlusCircle, Trash2, User as UserIcon } from "lucide-react";
 import type { Session } from "next-auth";
 
 import { LayoutSwitcher, type LayoutSwitcherValue } from "@/components/layout-switcher";
@@ -89,19 +89,42 @@ export function ProjectsDashboard({
     return "grid";
   });
 
-  const fetchProjects = useCallback(async () => {
-    try {
-      const res = await fetch("/api/projects");
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setProjects(data);
+  const [page, setPage] = useState(1);
+  const [limit, _setLimit] = useState(20);
+  const [totalPages, setTotalPages] = useState(1);
+  const [_totalProjects, setTotalProjects] = useState(0);
+
+  const fetchProjects = useCallback(
+    async (targetPage = page, targetLimit = limit) => {
+      try {
+        const res = await fetch(`/api/projects?page=${targetPage}&limit=${targetLimit}`);
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setProjects(data);
+          setTotalProjects(data.length);
+          setTotalPages(1);
+        } else if (data && Array.isArray(data.items)) {
+          setProjects(data.items);
+          if (data.pagination) {
+            setPage(data.pagination.page);
+            setTotalPages(data.pagination.totalPages);
+            setTotalProjects(data.pagination.total);
+          }
+        }
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [page, limit],
+  );
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > totalPages || newPage === page) return;
+    setPage(newPage);
+    void fetchProjects(newPage, limit);
+  };
 
   useEffect(() => {
     fetchProjects();
@@ -178,7 +201,9 @@ export function ProjectsDashboard({
           <div className="flex min-w-0 items-center justify-between gap-3 rtl:flex-row-reverse">
             <AddProjectDialog
               creatorDisplay={userName}
-              onProjectAdded={fetchProjects}
+              onProjectAdded={() => {
+                void fetchProjects();
+              }}
               open={isCreateProjectDialogOpen}
               onOpenChange={setIsCreateProjectDialogOpen}
             />
@@ -423,6 +448,34 @@ export function ProjectsDashboard({
           </div>
         )}
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between border-slate-200 border-t px-2 py-3 dark:border-slate-800">
+          <div className="text-muted-foreground text-sm">{t("table.pageOf", { current: page, total: totalPages })}</div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => handlePageChange(page - 1)}
+              aria-label={t("table.previous")}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span>{t("table.previous")}</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= totalPages}
+              onClick={() => handlePageChange(page + 1)}
+              aria-label={t("table.next")}
+            >
+              <span>{t("table.next")}</span>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {projectToEdit ? (
         <AddProjectDialog
