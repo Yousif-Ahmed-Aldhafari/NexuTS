@@ -1,6 +1,7 @@
 import { hashPassword } from "../../src/lib/auth/password";
 import { normalizeRole, USER_ROLES } from "../../src/lib/auth/roles";
 import { prisma } from "../../src/lib/prisma";
+import { assertDisposableDatabasePath } from "../helpers/database-path";
 import assert from "node:assert";
 import test, { after, before, describe } from "node:test";
 
@@ -15,15 +16,12 @@ describe("Phase 1, Step 1.2: Sensitive Data Exposure Elimination & Secure API Co
   const syntheticPlainPassword = "SyntheticSecretPassword#2026!";
 
   before(async () => {
-    // 1. Mandatory Safety Guard: independently verify physical database is dev-isolated.db
+    // 1. Mandatory safety guard: independently verify the runner-owned disposable database.
     const dbList =
       await prisma.$queryRawUnsafe<Array<{ seq: bigint; name: string; file: string }>>("PRAGMA database_list;");
     assert.ok(dbList.length > 0, "Database list must not be empty.");
     const physicalFile = dbList[0].file;
-    assert.ok(
-      physicalFile.endsWith("dev-isolated.db"),
-      `MANDATORY SAFETY GUARD: Physical database must be dev-isolated.db, got: "${physicalFile}"`,
-    );
+    assertDisposableDatabasePath(physicalFile);
 
     // 2. Create synthetic test fixtures
     const hashedPassword = await hashPassword(syntheticPlainPassword);

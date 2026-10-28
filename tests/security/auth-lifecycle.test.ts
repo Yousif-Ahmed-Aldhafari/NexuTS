@@ -7,6 +7,7 @@ import { checkOrigin, RequestError, readBody } from "../../src/lib/auth/request-
 import { validateSessionToken } from "../../src/lib/auth/session-lifecycle";
 import { consumeVerification, issueVerification, tokenDigest } from "../../src/lib/auth/verification";
 import { prisma } from "../../src/lib/prisma";
+import { assertDisposableDatabasePath } from "../helpers/database-path";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -26,7 +27,7 @@ const claims = (user: typeof first) => ({
 describe("Step 1.5 authentication lifecycle", () => {
   before(async () => {
     const paths = await prisma.$queryRaw<Array<{ file: string }>>`PRAGMA database_list`;
-    assert.equal(paths[0].file, `${process.cwd()}/prisma/dev-isolated.db`);
+    assertDisposableDatabasePath(paths[0].file);
     for (const label of ["first", "second"]) {
       const user = await prisma.user.create({
         data: {

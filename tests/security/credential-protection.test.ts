@@ -1,6 +1,7 @@
 import { hashPassword, isBcryptHash, verifyPassword } from "../../src/lib/auth/password";
 import { isAdminRole, isValidRole, normalizeRole, USER_ROLES } from "../../src/lib/auth/roles";
 import { prisma } from "../../src/lib/prisma";
+import { assertDisposableDatabasePath } from "../helpers/database-path";
 import assert from "node:assert";
 import test, { after, before, describe } from "node:test";
 
@@ -8,15 +9,12 @@ describe("Phase 1, Step 1.1: Credential Protection & Secure Authentication", () 
   const createdUserIds: number[] = [];
 
   before(async () => {
-    // 1. Independently verify the physical database target before performing any mutations
+    // 1. Independently verify the runner-owned database target before mutations.
     const dbList =
       await prisma.$queryRawUnsafe<Array<{ seq: bigint; name: string; file: string }>>("PRAGMA database_list;");
     assert.ok(dbList.length > 0, "Database list must not be empty.");
     const physicalFile = dbList[0].file;
-    assert.ok(
-      physicalFile.endsWith("dev-isolated.db"),
-      `MANDATORY SAFETY GUARD: Physical database must be dev-isolated.db, got: "${physicalFile}"`,
-    );
+    assertDisposableDatabasePath(physicalFile);
   });
 
   after(async () => {

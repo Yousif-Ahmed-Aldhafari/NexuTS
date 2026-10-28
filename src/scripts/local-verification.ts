@@ -9,7 +9,14 @@ async function main() {
   if (process.env.NODE_ENV === "production" || process.env.ALLOW_LOCAL_VERIFICATION !== "true")
     throw new Error("Local delivery is disabled.");
   const databases = await prisma.$queryRaw<Array<{ file: string }>>`PRAGMA database_list`;
-  if (fs.realpathSync(databases[0].file) !== fs.realpathSync(path.resolve("prisma/dev-isolated.db")))
+  const physicalDatabase = fs.realpathSync(databases[0].file);
+  const testDirectory = process.env.NEXUTS_TEST_DATABASE_DIR;
+  const disposableTestDatabase =
+    process.env.NEXUTS_TEST_MODE === "1" &&
+    testDirectory &&
+    physicalDatabase === path.join(fs.realpathSync(testDirectory), "test.db") &&
+    fs.existsSync(path.join(testDirectory, ".nexuts-disposable-test-database"));
+  if (!disposableTestDatabase && physicalDatabase !== fs.realpathSync(path.resolve("prisma/dev-isolated.db")))
     throw new Error("Isolated database required.");
   const id = Number(process.argv[2]);
   if (!Number.isSafeInteger(id) || id <= 0) throw new Error("Numeric account ID required.");

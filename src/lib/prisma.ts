@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 const globalForPrisma = globalThis as unknown as {
@@ -40,8 +41,21 @@ function getPrismaClient(): PrismaClient {
         throw new Error("The protected original database cannot be used by this security branch.");
       }
     }
+    const testDirectory = process.env.NEXUTS_TEST_DATABASE_DIR;
+    const explicitDisposableTestDatabase = (() => {
+      if (process.env.NEXUTS_TEST_MODE !== "1" || !testDirectory) return false;
+      const physicalTestDirectory = fs.realpathSync(testDirectory);
+      const physicalTempDirectory = fs.realpathSync(os.tmpdir());
+      const marker = path.join(physicalTestDirectory, ".nexuts-disposable-test-database");
+      return (
+        physicalTestDirectory.startsWith(`${physicalTempDirectory}${path.sep}`) &&
+        physicalPath === path.join(physicalTestDirectory, "test.db") &&
+        fs.existsSync(marker)
+      );
+    })();
     if (
       process.env.NODE_ENV !== "production" &&
+      !explicitDisposableTestDatabase &&
       physicalPath !== fs.realpathSync(path.resolve(process.cwd(), "prisma/dev-isolated.db"))
     ) {
       throw new Error("Development and test database must be prisma/dev-isolated.db.");

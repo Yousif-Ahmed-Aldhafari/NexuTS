@@ -13,18 +13,22 @@
 
 ## 2. Database Isolation & Safety Rules
 
-### 2.1 Dual-Database Policy
+### 2.1 Database Policy
 - **Tracked Database (`prisma/dev.db`):**
   - Must remain strictly untouched throughout development.
   - Never run migrations, seeds, or resets against `prisma/dev.db`.
   - Checksum must be verified before and after each phase (`sha256sum prisma/dev.db`).
 - **Isolated Development Database (`prisma/dev-isolated.db`):**
-  - All local development, test runs, and migrations must target `prisma/dev-isolated.db`.
+  - Interactive local development and manual migration rehearsal target `prisma/dev-isolated.db`.
   - Excluded from version control via `.gitignore` and `.git/info/exclude`.
   - Configured locally via untracked `.env.local`:
     ```bash
     DATABASE_URL="file:./dev-isolated.db"
     ```
+- **Automated Test Databases:**
+  - Automated tests create a unique disposable SQLite file below the operating system temporary directory.
+  - Runners apply the real Prisma migrations, verify both developer databases before and after, and remove only their marked temporary directory.
+  - Never point an automated test runner at either developer database.
 
 ### 2.2 Startup Guardrails
 - `src/lib/prisma.ts` contains an explicit fail-closed guard: if `DATABASE_URL` specifies a database file that does not exist on disk, startup immediately terminates with an error. Never bypass or disable this guard.
@@ -76,9 +80,15 @@ npx --no-install biome lint .
 ### Gate 3: Automated Unit & Integration Tests (Introduced in Phase 1)
 Validates core logic, permissions, and regressions:
 ```bash
-npm test
+npm run test:unit
+npm run test:migrations
+npm run test:integration
+npm run test:security:http
+npm run test:e2e
 ```
 *Criterion:* All test suites pass.
+
+See [Phase 1, Step 1.6 testing](./PHASE-1-STEP-1.6-TESTING.md) for suite boundaries, disposable database controls, CI behavior, and troubleshooting.
 
 ### Gate 4: Targeted Security Regression Check
 Validates that resolved vulnerabilities (e.g., password leakage, unauthenticated mutations) remain patched:

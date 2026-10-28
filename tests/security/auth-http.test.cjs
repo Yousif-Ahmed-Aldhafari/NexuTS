@@ -3,6 +3,7 @@ const { test, before, after, describe } = require("node:test");
 const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
 const crypto = require("node:crypto");
+const path = require("node:path");
 const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL } }, log: [] });
 const base = process.env.SECURITY_TEST_URL || "http://localhost:3105";
 const password = "SyntheticPassword#2026!";
@@ -68,7 +69,7 @@ async function proof(user, expired = false) {
 describe("Step 1.5 actual production HTTP security", () => {
   before(async () => {
     const paths = await prisma.$queryRawUnsafe("PRAGMA database_list");
-    assert.equal(paths[0].file, `${process.cwd()}/prisma/dev-isolated.db`);
+    assert.equal(paths[0].file, path.join(process.env.NEXUTS_TEST_DATABASE_DIR, "test.db"));
     admin = await createUser("ADMIN");
     member = await createUser();
     const a = await login(admin.email);
@@ -88,7 +89,7 @@ describe("Step 1.5 actual production HTTP security", () => {
     );
   });
   after(async () => {
-    if (projectId) await prisma.project.deleteMany({ where: { id: projectId } });
+    await prisma.project.deleteMany({ where: { OR: [{ id: projectId }, { userId: { in: users } }] } });
     await prisma.verificationProof.deleteMany({ where: { userId: { in: users } } });
     await prisma.user.deleteMany({ where: { id: { in: users } } });
     await prisma.$disconnect();
