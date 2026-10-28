@@ -255,6 +255,8 @@ export const arMessages = {
   "qa.entryModal.validation.fixRequired": "إصلاح الحالة مطلوب.",
   "status.success": "نجاح",
   "status.fail": "يفشل",
+  "status.open": "مفتوح",
+  "status.closed": "مغلق",
   "status.high": "عالي",
   "status.medium": "واسطة",
   "status.low": "قليل",

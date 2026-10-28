@@ -57,6 +57,7 @@ type Entry = {
   title: string;
   description: string;
   status: string;
+  priority?: string | null;
   assignedTo: string | null;
   createdAt: string;
   updatedAt: string;
@@ -86,6 +87,7 @@ const isFixStatus = (value: string): value is FixStatus =>
   value === "NEEDS_FIX" || value === "NEEDS_RETEST" || value === "FIXED";
 const isIssuePriority = (value: string): value is IssuePriority =>
   value === "HIGH" || value === "MEDIUM" || value === "LOW";
+const getEntryPriority = (entry: Entry) => entry.priority || (isIssuePriority(entry.status) ? entry.status : "");
 
 type ExportColumnDefinition = {
   header: string;
@@ -251,7 +253,7 @@ export function DataTable({
         const matchesUsername = usernameFilter === "ALL" || (entry.username || unknownLabel) === usernameFilter;
         const matchesStatus = tableType !== "TEST_CASES" || statusFilter === "ALL" || entry.status === statusFilter;
         const matchesPriority =
-          tableType !== "ISSUE_LOGS" || priorityFilter === "ALL" || entry.status === priorityFilter;
+          tableType !== "ISSUE_LOGS" || priorityFilter === "ALL" || getEntryPriority(entry) === priorityFilter;
 
         return matchesSearch && matchesAssignedTo && matchesUsername && matchesStatus && matchesPriority;
       }),
@@ -297,7 +299,7 @@ export function DataTable({
             { header: t("qa.entryModal.title"), value: (entry) => entry.title },
             { header: t("qa.entryModal.description"), value: (entry) => entry.description || "" },
             { header: t("qa.entryModal.steps"), value: (entry) => entry.stepsToReproduce || "" },
-            { header: t("qa.entryModal.priority"), value: (entry) => entry.status },
+            { header: t("qa.entryModal.priority"), value: (entry) => getEntryPriority(entry) },
             { header: t("qa.entryModal.fixStatus"), value: (entry) => getFixStatusLabel(entry.fixStatus || "") },
             {
               header: t("qa.entryModal.media"),
@@ -366,7 +368,7 @@ export function DataTable({
           expectedResult: entry.expectedResult || "",
         }
       : {
-          priority: isIssuePriority(entry.status) ? entry.status : "",
+          priority: (entry.priority as IssuePriority) || (isIssuePriority(entry.status) ? entry.status : ""),
         }),
   });
 
@@ -420,7 +422,8 @@ export function DataTable({
         assignedToFilter === "ALL" || (entry.assignedTo || unassignedLabel) === assignedToFilter;
       const matchesUsername = usernameFilter === "ALL" || (entry.username || unknownLabel) === usernameFilter;
       const matchesStatus = tableType !== "TEST_CASES" || statusFilter === "ALL" || entry.status === statusFilter;
-      const matchesPriority = tableType !== "ISSUE_LOGS" || priorityFilter === "ALL" || entry.status === priorityFilter;
+      const matchesPriority =
+        tableType !== "ISSUE_LOGS" || priorityFilter === "ALL" || getEntryPriority(entry) === priorityFilter;
       return matchesSearch && matchesAssignedTo && matchesUsername && matchesStatus && matchesPriority;
     });
     return filtered.map((entry) => exportColumns.map((col) => col.value(entry)));
@@ -754,7 +757,7 @@ export function DataTable({
                           </>
                         ) : (
                           <TableCell className="group/cell relative">
-                            <QaStatusBadge value={entry.status} />
+                            <QaStatusBadge value={getEntryPriority(entry)} />
                             {renderCellActions(entry)}
                           </TableCell>
                         )}
@@ -838,7 +841,7 @@ export function DataTable({
                     {entry.title}
                   </h3>
                   <div className="transition-opacity duration-200 group-focus-within:opacity-0 group-hover:opacity-0">
-                    <QaStatusBadge value={entry.status} />
+                    <QaStatusBadge value={tableType === "ISSUE_LOGS" ? getEntryPriority(entry) : entry.status} />
                   </div>
                 </div>
                 <div className="pointer-events-none absolute end-3 top-3 flex items-center gap-1 opacity-0 transition-all duration-200 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 has-[[data-state=open]]:pointer-events-auto has-[[data-state=open]]:opacity-100">
@@ -1014,7 +1017,9 @@ export function DataTable({
                       <span className="block text-foreground/60 text-xs uppercase tracking-wide dark:text-white/60">
                         {tableType === "TEST_CASES" ? t("qa.entryModal.status") : t("qa.entryModal.priority")}
                       </span>
-                      <QaStatusBadge value={selectedEntry.status} />
+                      <QaStatusBadge
+                        value={tableType === "TEST_CASES" ? selectedEntry.status : getEntryPriority(selectedEntry)}
+                      />
                     </p>
                     <p className="min-w-0 [overflow-wrap:anywhere]">
                       <span className="block text-foreground/60 text-xs uppercase tracking-wide dark:text-white/60">

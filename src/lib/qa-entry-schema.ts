@@ -25,6 +25,7 @@ type RawEntryRequest = {
 export type NormalizedEntryCreateInput = {
   title: string;
   status: string;
+  priority: IssuePriority | null;
   assignedTo: string | null;
   description: string;
   username: string;
@@ -107,6 +108,7 @@ export function validateAndNormalizeEntryInput(
       data: {
         title,
         status,
+        priority: null,
         assignedTo: assignedToValue || null,
         description,
         username,
@@ -120,7 +122,7 @@ export function validateAndNormalizeEntryInput(
     };
   }
 
-  const priority = asStrictPriority(rawInput.priority);
+  const priority = asStrictPriority(rawInput.priority ?? rawInput.status);
   const fixStatus = asStrictFixStatus(rawInput.fixStatus);
   if (!priority) {
     return { error: "Priority must be High, Medium, or Low." };
@@ -129,10 +131,14 @@ export function validateAndNormalizeEntryInput(
     return { error: "Fix Status is required." };
   }
 
+  const rawStatus = normalize(rawInput.status).toUpperCase();
+  const status = rawStatus === "OPEN" || rawStatus === "CLOSED" ? rawStatus : fixStatus === "FIXED" ? "CLOSED" : "OPEN";
+
   return {
     data: {
       title,
-      status: priority,
+      status,
+      priority,
       assignedTo: assignedToValue || null,
       description,
       username,

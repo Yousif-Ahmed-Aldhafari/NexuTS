@@ -376,4 +376,94 @@ describe("Step 1.5 actual production HTTP security", () => {
     });
     assert.equal((await request("/api/auth/profile", "GET", adminCookie)).status, 401);
   });
+  test("entry API creates and filters issue logs with priority and test cases with status", async () => {
+    const authAdmin = await login(admin.email);
+    const authAdminCookie = authAdmin.cookie;
+
+    const projectRes = await request("/api/projects", "POST", authAdminCookie, {
+      name: `Integrity Project ${Date.now()}`,
+    });
+    assert.equal(projectRes.status, 201);
+    const project = await projectRes.json();
+
+    const tcTableRes = await request("/api/tables", "POST", authAdminCookie, {
+      name: "TC Board",
+      projectId: project.id,
+      tableType: "TEST_CASES",
+    });
+    assert.equal(tcTableRes.status, 201);
+    const tcTable = await tcTableRes.json();
+
+    const issueTableRes = await request("/api/tables", "POST", authAdminCookie, {
+      name: "Issues Board",
+      projectId: project.id,
+      tableType: "ISSUE_LOGS",
+    });
+    assert.equal(issueTableRes.status, 201);
+    const issueTable = await issueTableRes.json();
+
+    const tcEntryRes = await request("/api/entries", "POST", authAdminCookie, {
+      tableId: tcTable.id,
+      title: "Login Test",
+      description: "Verify login",
+      stepsToReproduce: "Step 1",
+      status: "SUCCESS",
+      result: "Success",
+      expectedResult: "Success",
+      username: "admin_tester",
+    });
+    assert.equal(tcEntryRes.status, 201);
+    const tcEntry = await tcEntryRes.json();
+    assert.equal(tcEntry.status, "SUCCESS");
+    assert.equal(tcEntry.priority, null);
+
+    const issueEntryRes = await request("/api/entries", "POST", authAdminCookie, {
+      tableId: issueTable.id,
+      title: "High Bug",
+      description: "App crashes",
+      stepsToReproduce: "Click button",
+      priority: "HIGH",
+      fixStatus: "NEEDS_FIX",
+      username: "admin_tester",
+    });
+    assert.equal(issueEntryRes.status, 201);
+    const issueEntry = await issueEntryRes.json();
+    assert.equal(issueEntry.priority, "HIGH");
+    assert.equal(issueEntry.status, "OPEN");
+
+    const highFilterRes = await request(
+      `/api/tables/${issueTable.id}/entries?priority=HIGH`,
+      "GET",
+      authAdminCookie,
+    );
+    assert.equal(highFilterRes.status, 200);
+    const highData = await highFilterRes.json();
+    assert.equal(highData.items.length, 1);
+    assert.equal(highData.items[0].id, issueEntry.id);
+
+    const lowFilterRes = await request(
+      `/api/tables/${issueTable.id}/entries?priority=LOW`,
+      "GET",
+      authAdminCookie,
+    );
+    assert.equal(lowFilterRes.status, 200);
+    const lowData = await lowFilterRes.json();
+    assert.equal(lowData.items.length, 0);
+
+    const updateRes = await request("/api/entries", "PUT", authAdminCookie, {
+      id: issueEntry.id,
+      tableId: issueTable.id,
+      title: "High Bug Fixed",
+      description: "App crashed but resolved",
+      stepsToReproduce: "Click button",
+      priority: "HIGH",
+      fixStatus: "FIXED",
+      username: "admin_tester",
+    });
+    assert.equal(updateRes.status, 200);
+    const updated = await updateRes.json();
+    assert.equal(updated.priority, "HIGH");
+    assert.equal(updated.status, "CLOSED");
+    assert.equal(updated.fixStatus, "FIXED");
+  });
 });

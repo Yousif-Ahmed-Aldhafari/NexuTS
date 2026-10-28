@@ -32,6 +32,7 @@ export async function GET(req: Request, { params }: RouteContext) {
 
     const search = searchParams.get("search")?.trim();
     const status = searchParams.get("status")?.trim();
+    const priority = searchParams.get("priority")?.trim();
     const assignedTo = searchParams.get("assignedTo")?.trim();
     const username = searchParams.get("username")?.trim();
 
@@ -45,6 +46,9 @@ export async function GET(req: Request, { params }: RouteContext) {
     }
     if (status && status !== "ALL") {
       where.status = status;
+    }
+    if (priority && priority !== "ALL") {
+      where.priority = priority;
     }
     if (assignedTo && assignedTo !== "ALL") {
       where.assignedTo = assignedTo;

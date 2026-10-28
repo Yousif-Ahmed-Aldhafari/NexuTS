@@ -17,6 +17,8 @@ const toneClassByType: Record<BadgeTone, string> = {
 const STATUS_META = {
   SUCCESS: { labelKey: "status.success", tone: "green" as const },
   FAIL: { labelKey: "status.fail", tone: "red" as const },
+  OPEN: { labelKey: "status.open", tone: "blue" as const },
+  CLOSED: { labelKey: "status.closed", tone: "green" as const },
   HIGH: { labelKey: "status.high", tone: "red" as const },
   MEDIUM: { labelKey: "status.medium", tone: "amber" as const },
   LOW: { labelKey: "status.low", tone: "blue" as const },

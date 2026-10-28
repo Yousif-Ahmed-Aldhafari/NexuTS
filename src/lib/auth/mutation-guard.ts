@@ -42,7 +42,7 @@ export const entryInput = z
     result: optionalText,
     expectedResult: optionalText,
     assignedTo: z.string().max(254).optional(),
-    status: z.enum(["SUCCESS", "FAIL"]).optional(),
+    status: z.enum(["SUCCESS", "FAIL", "OPEN", "CLOSED", "NEW"]).optional(),
     priority: z.enum(["HIGH", "MEDIUM", "LOW"]).optional(),
     fixStatus: z.enum(["NEEDS_FIX", "NEEDS_RETEST", "FIXED", ""]).optional(),
     screenshotClipName: z.string().max(255).optional(),

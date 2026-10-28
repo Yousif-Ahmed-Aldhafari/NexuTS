@@ -49,14 +49,32 @@ describe("Prisma fresh and upgrade migrations", () => {
           "20260512181500_add_user_language",
           "20261028010000_auth_lifecycle",
           "20261028020000_performance_indexes",
+          "20261028030000_normalize_entry_priority_and_constraints",
         ],
       );
       assert.ok(columns(db, "User").includes("sessionVersion"));
       assert.ok(columns(db, "User").includes("disabled"));
       assert.ok(columns(db, "User").includes("language"));
+      assert.ok(columns(db, "Entry").includes("priority"));
       assert.ok(
         db.prepare("SELECT name FROM sqlite_master WHERE type='trigger' AND name='protect_last_admin_update'").get(),
       );
+
+      // Verify validation triggers
+      const expectedTriggers = [
+        "validate_table_table_type_insert",
+        "validate_table_table_type_update",
+        "validate_entry_status_insert",
+        "validate_entry_status_update",
+        "validate_entry_fix_status_insert",
+        "validate_entry_fix_status_update",
+      ];
+      for (const triggerName of expectedTriggers) {
+        assert.ok(
+          db.prepare("SELECT name FROM sqlite_master WHERE type='trigger' AND name=?").get(triggerName),
+          `Expected trigger ${triggerName} to exist`,
+        );
+      }
 
       // Verify performance indexes
       const expectedIndexes = [
@@ -259,6 +277,166 @@ describe("Prisma fresh and upgrade migrations", () => {
       assert.ok(
         plan.some((p) => p.detail.includes("Entry_tableId_isDeleted_idx")),
         "Expected query plan to use Entry_tableId_isDeleted_idx",
+      );
+    } finally {
+      db.close();
+    }
+  });
+
+  test("Step 2.3 schema consistency & priority normalization upgrades existing database preserving test cases, backfilling issue priorities, and activating constraints", () => {
+    const testDatabase = createTestDatabase("migration-upgrade-2.3");
+    databases.push(testDatabase);
+    const workspace = path.join(testDatabase.directory, "pre-step23");
+    const migrations = path.join(workspace, "migrations");
+    fs.mkdirSync(migrations, { recursive: true });
+    fs.copyFileSync(path.join(root, "prisma/schema.prisma"), path.join(workspace, "schema.prisma"));
+    fs.copyFileSync(
+      path.join(root, "prisma/migrations/migration_lock.toml"),
+      path.join(migrations, "migration_lock.toml"),
+    );
+    for (const name of [
+      "20260512000000_baseline",
+      "20260512181500_add_user_language",
+      "20261028010000_auth_lifecycle",
+      "20261028020000_performance_indexes",
+    ]) {
+      fs.cpSync(path.join(root, "prisma/migrations", name), path.join(migrations, name), { recursive: true });
+    }
+    deployMigrations(testDatabase, path.join(workspace, "schema.prisma"));
+
+    let db = new DatabaseSync(testDatabase.database);
+    db.exec("PRAGMA foreign_keys=ON");
+    db.prepare("INSERT INTO User (name,email,role,password,language) VALUES (?,?,?,?,?)").run(
+      "Schema Upgrade User",
+      "schema.upgrade@synthetic.local",
+      "ADMIN",
+      "synthetic-hash",
+      "en",
+    );
+    const userId = db.prepare("SELECT id FROM User WHERE email=?").get("schema.upgrade@synthetic.local").id;
+    db.prepare("INSERT INTO Project (id,name,userId,updatedAt) VALUES (?,?,?,CURRENT_TIMESTAMP)").run(
+      "proj-schema-upgrade-1",
+      "Schema Upgrade Project",
+      userId,
+    );
+    db.prepare("INSERT INTO \"Table\" (id,projectId,name,tableType,updatedAt) VALUES (?,?,?,?,CURRENT_TIMESTAMP)").run(
+      "tbl-tc-upgrade-1",
+      "proj-schema-upgrade-1",
+      "Test Cases Table",
+      "TEST_CASES",
+    );
+    db.prepare("INSERT INTO \"Table\" (id,projectId,name,tableType,updatedAt) VALUES (?,?,?,?,CURRENT_TIMESTAMP)").run(
+      "tbl-issues-upgrade-1",
+      "proj-schema-upgrade-1",
+      "Issue Logs Table",
+      "ISSUE_LOGS",
+    );
+
+    // Legacy test case entries
+    db.prepare(
+      "INSERT INTO Entry (id,tableId,title,description,status,fixStatus,result,expectedResult,isDeleted,updatedAt) VALUES (?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)",
+    ).run(2001, "tbl-tc-upgrade-1", "Pass Test", "Desc 1", "SUCCESS", "FIXED", "Pass", "Pass", 0);
+    db.prepare(
+      "INSERT INTO Entry (id,tableId,title,description,status,fixStatus,result,expectedResult,isDeleted,updatedAt) VALUES (?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)",
+    ).run(2002, "tbl-tc-upgrade-1", "Fail Test", "Desc 2", "FAIL", "NEEDS_FIX", "Fail", "Pass", 0);
+
+    // Legacy issue log entries where status held priority values
+    db.prepare(
+      "INSERT INTO Entry (id,tableId,title,description,status,fixStatus,isDeleted,updatedAt) VALUES (?,?,?,?,?,?,?,CURRENT_TIMESTAMP)",
+    ).run(2003, "tbl-issues-upgrade-1", "High Issue", "Desc 3", "HIGH", "NEEDS_FIX", 0);
+    db.prepare(
+      "INSERT INTO Entry (id,tableId,title,description,status,fixStatus,isDeleted,updatedAt) VALUES (?,?,?,?,?,?,?,CURRENT_TIMESTAMP)",
+    ).run(2004, "tbl-issues-upgrade-1", "Medium Issue", "Desc 4", "MEDIUM", "NEEDS_RETEST", 0);
+    db.prepare(
+      "INSERT INTO Entry (id,tableId,title,description,status,fixStatus,isDeleted,updatedAt) VALUES (?,?,?,?,?,?,?,CURRENT_TIMESTAMP)",
+    ).run(2005, "tbl-issues-upgrade-1", "Low Fixed Issue", "Desc 5", "LOW", "FIXED", 0);
+
+    db.close();
+
+    // Deploy Step 2.3 migration
+    fs.cpSync(
+      path.join(root, "prisma/migrations/20261028030000_normalize_entry_priority_and_constraints"),
+      path.join(migrations, "20261028030000_normalize_entry_priority_and_constraints"),
+      { recursive: true },
+    );
+    deployMigrations(testDatabase, path.join(workspace, "schema.prisma"));
+
+    db = new DatabaseSync(testDatabase.database);
+    try {
+      // 1. Verify test case entries remained intact with priority null
+      const tc1 = db.prepare("SELECT status, priority, fixStatus FROM Entry WHERE id=?").get(2001);
+      assert.equal(tc1.status, "SUCCESS");
+      assert.equal(tc1.priority, null);
+      assert.equal(tc1.fixStatus, "FIXED");
+
+      const tc2 = db.prepare("SELECT status, priority, fixStatus FROM Entry WHERE id=?").get(2002);
+      assert.equal(tc2.status, "FAIL");
+      assert.equal(tc2.priority, null);
+      assert.equal(tc2.fixStatus, "NEEDS_FIX");
+
+      // 2. Verify issue log entries migrated priority from status and updated status to OPEN/CLOSED
+      const issue1 = db.prepare("SELECT status, priority, fixStatus FROM Entry WHERE id=?").get(2003);
+      assert.equal(issue1.priority, "HIGH");
+      assert.equal(issue1.status, "OPEN");
+      assert.equal(issue1.fixStatus, "NEEDS_FIX");
+
+      const issue2 = db.prepare("SELECT status, priority, fixStatus FROM Entry WHERE id=?").get(2004);
+      assert.equal(issue2.priority, "MEDIUM");
+      assert.equal(issue2.status, "OPEN");
+      assert.equal(issue2.fixStatus, "NEEDS_RETEST");
+
+      const issue3 = db.prepare("SELECT status, priority, fixStatus FROM Entry WHERE id=?").get(2005);
+      assert.equal(issue3.priority, "LOW");
+      assert.equal(issue3.status, "CLOSED");
+      assert.equal(issue3.fixStatus, "FIXED");
+
+      // 3. Verify SQLite CHECK constraint rejects invalid priority
+      assert.throws(
+        () =>
+          db.prepare(
+            "INSERT INTO Entry (id,tableId,title,description,status,priority,updatedAt) VALUES (?,?,?,?,?,?,CURRENT_TIMESTAMP)",
+          ).run(2006, "tbl-issues-upgrade-1", "Invalid Priority", "Desc", "OPEN", "CRITICAL"),
+        /CHECK constraint failed/,
+      );
+
+      // 4. Verify SQLite trigger rejects invalid Table tableType
+      assert.throws(
+        () =>
+          db.prepare(
+            "INSERT INTO \"Table\" (id,projectId,name,tableType,updatedAt) VALUES (?,?,?,?,CURRENT_TIMESTAMP)",
+          ).run("tbl-invalid", "proj-schema-upgrade-1", "Invalid Table", "KANBAN"),
+        /INVALID_TABLE_TYPE/,
+      );
+      assert.throws(
+        () =>
+          db.prepare("UPDATE \"Table\" SET tableType=? WHERE id=?").run("SPRINT_BOARD", "tbl-tc-upgrade-1"),
+        /INVALID_TABLE_TYPE/,
+      );
+
+      // 5. Verify SQLite trigger rejects invalid Entry status
+      assert.throws(
+        () =>
+          db.prepare(
+            "INSERT INTO Entry (id,tableId,title,description,status,updatedAt) VALUES (?,?,?,?,?,CURRENT_TIMESTAMP)",
+          ).run(2007, "tbl-tc-upgrade-1", "Invalid Status", "Desc", "IN_PROGRESS"),
+        /INVALID_ENTRY_STATUS/,
+      );
+      assert.throws(
+        () => db.prepare("UPDATE Entry SET status=? WHERE id=?").run("BLOCKED", 2001),
+        /INVALID_ENTRY_STATUS/,
+      );
+
+      // 6. Verify SQLite trigger rejects invalid Entry fixStatus
+      assert.throws(
+        () =>
+          db.prepare(
+            "INSERT INTO Entry (id,tableId,title,description,status,fixStatus,updatedAt) VALUES (?,?,?,?,?,?,CURRENT_TIMESTAMP)",
+          ).run(2008, "tbl-tc-upgrade-1", "Invalid Fix", "Desc", "FAIL", "WONT_FIX"),
+        /INVALID_FIX_STATUS/,
+      );
+      assert.throws(
+        () => db.prepare("UPDATE Entry SET fixStatus=? WHERE id=?").run("CANNOT_REPRODUCE", 2002),
+        /INVALID_FIX_STATUS/,
       );
     } finally {
       db.close();

@@ -88,6 +88,7 @@ model Entry {
   title              String
   description        String
   status             String   @default("NEW")
+  priority           String?
   assignedTo         String?
   isDeleted          Boolean  @default(false)
   createdAt          DateTime @default(now())

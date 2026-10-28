@@ -1,4 +1,4 @@
-﻿import type { AppLocale } from "../types";
+import type { AppLocale } from "../types";
 
 export const enMessages = {
   "language.label": "Language",
@@ -275,6 +275,8 @@ export const enMessages = {
 
   "status.success": "Success",
   "status.fail": "Fail",
+  "status.open": "Open",
+  "status.closed": "Closed",
   "status.high": "High",
   "status.medium": "Medium",
   "status.low": "Low",
