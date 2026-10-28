@@ -30,6 +30,7 @@ let testAuthUser: AuthenticatedUser | null = null;
  * under synthetic test contexts without launching an external HTTP daemon.
  */
 export function setTestAuthUser(user: AuthenticatedUser | null) {
+  if (process.env.NODE_ENV !== "test") throw new Error("Test authentication is disabled outside test mode.");
   testAuthUser = user;
 }
 

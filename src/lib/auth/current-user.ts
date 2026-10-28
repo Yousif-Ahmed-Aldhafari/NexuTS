@@ -5,8 +5,9 @@ import { isAdminRole } from "./roles";
 
 export const parseNumericId = (value: string | null | undefined) => {
   if (!value) return null;
-  const parsed = Number.parseInt(value, 10);
-  return Number.isSafeInteger(parsed) ? parsed : null;
+  if (!/^[1-9]\d*$/.test(String(value))) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed <= 2147483647 ? parsed : null;
 };
 
 export async function getCurrentUser() {
@@ -22,11 +23,7 @@ export async function getCurrentUser() {
     dbUser = await prisma.user.findUnique({ where: { id: sessionUserId } });
   }
 
-  if (!dbUser && session.user.email) {
-    dbUser = await prisma.user.findUnique({ where: { email: session.user.email } });
-  }
-
-  if (!dbUser) {
+  if (!dbUser || dbUser.disabled) {
     return null;
   }
 

@@ -63,6 +63,7 @@ Create or update `.env` in the project root:
 
 ```bash
 AUTH_SECRET="replace_with_a_long_random_secret"
+DATABASE_URL="file:./dev-isolated.db"
 ```
 
 Optional:
@@ -93,17 +94,17 @@ Open `http://localhost:3000`.
 
 ## Database Notes
 
-- SQLite is used by default (`prisma/dev.db`).
-- If you change the Prisma schema, run:
+- SQLite requires an explicit `DATABASE_URL`; development and tests use `prisma/dev-isolated.db`.
+- `prisma/dev.db` is a protected original and must not be modified.
+- Review migration SQL and the Step 1.5 deployment notes before schema updates. Check status with:
 
 ```bash
-npx prisma migrate dev
+DATABASE_URL=file:./dev-isolated.db npx --no-install prisma migrate status
 ```
 
 ## Security Note
 
-User registration in `src/app/api/auth/register/route.ts` currently stores passwords without hashing.  
-Before production use, replace this with secure hashing (for example `bcryptjs`).
+Authentication lifecycle, verification delivery configuration, isolated regression tests, and deployment limitations are documented in [Phase 1 Step 1.5](docs/development/PHASE-1-STEP-1.5-SECURITY.md). Passwords use bcrypt; development and tests must use the isolated database.
 
 ## Contributing
 

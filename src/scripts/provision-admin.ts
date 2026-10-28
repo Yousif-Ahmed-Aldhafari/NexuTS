@@ -11,8 +11,17 @@
  */
 
 import { prisma } from "../lib/prisma";
+import fs from "node:fs";
+import path from "node:path";
 
 async function main() {
+  if (process.env.ALLOW_ADMIN_PROVISIONING !== "true" || !process.env.DATABASE_URL) {
+    throw new Error("Explicit DATABASE_URL and ALLOW_ADMIN_PROVISIONING=true are required.");
+  }
+  const databases = await prisma.$queryRaw<Array<{ file: string }>>`PRAGMA database_list`;
+  if (fs.realpathSync(databases[0].file) === fs.realpathSync(path.resolve("prisma/dev.db"))) {
+    throw new Error("Provisioning against the protected original database is prohibited.");
+  }
   const targetEmail = process.argv[2]?.trim().toLowerCase();
 
   if (!targetEmail) {
@@ -27,13 +36,13 @@ async function main() {
   });
 
   if (!user) {
-    console.error(`Error: User with email "${targetEmail}" does not exist in the database.`);
+    console.error("Error: Target account does not exist.");
     console.error("The user must complete standard registration before being granted administrative privileges.");
     process.exit(1);
   }
 
   if (user.role === "ADMIN") {
-    console.log(`Notice: User "${user.email}" (ID: ${user.id}) is already an administrator.`);
+    console.log(`Notice: Account ${user.id} is already an administrator.`);
     process.exit(0);
   }
 
@@ -42,14 +51,12 @@ async function main() {
     data: { role: "ADMIN" },
   });
 
-  console.log(
-    `[audit] SUCCESS: User "${user.email}" (ID: ${user.id}) successfully elevated to ADMIN at ${new Date().toISOString()}`,
-  );
+  console.log(`[audit] Administrator provisioned: accountId=${user.id} at ${new Date().toISOString()}`);
 }
 
 main()
-  .catch((err) => {
-    console.error("Fatal error during administrator provisioning:", err);
+  .catch(() => {
+    console.error("Administrator provisioning failed. Check explicit configuration and account identifier.");
     process.exit(1);
   })
   .finally(async () => {

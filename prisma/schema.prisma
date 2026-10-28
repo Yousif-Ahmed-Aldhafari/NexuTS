@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./dev.db" // Using SQLite for quick local test case management
+  url      = env("DATABASE_URL")
 }
 
 // --- NEXTAUTH.JS MODELS ---
@@ -15,6 +15,8 @@ model User {
   email         String?   @unique
   language      String    @default("en")
   role          String    @default("USER")
+  sessionVersion Int      @default(0)
+  disabled      Boolean   @default(false)
   emailVerified DateTime?
   image         String?
   password      String?
@@ -93,4 +95,20 @@ model Entry {
   expectedResult     String?
   screenshotClipName String?
   screenshotClipUrl  String?
+}
+
+model VerificationProof {
+  digest    String   @id
+  userId    Int
+  email     String
+  purpose   String
+  expiresAt DateTime
+  @@index([userId, purpose])
+}
+
+model AuthRateLimit {
+  key       String   @id
+  count     Int
+  expiresAt DateTime
+  @@index([expiresAt])
 }

@@ -11,6 +11,8 @@ function getPrismaClient(): PrismaClient {
   const databaseUrl = process.env.DATABASE_URL;
   let datasources: { db: { url: string } } | undefined;
 
+  if (!databaseUrl) throw new Error("DATABASE_URL is required; refusing implicit database fallback.");
+
   if (databaseUrl) {
     if (!databaseUrl.startsWith("file:")) {
       throw new Error(
@@ -29,6 +31,22 @@ function getPrismaClient(): PrismaClient {
       );
     }
 
+    const physicalPath = fs.realpathSync(resolvedPath);
+    const protectedPath = path.resolve(process.cwd(), "prisma/dev.db");
+    if (fs.existsSync(protectedPath)) {
+      const target = fs.statSync(physicalPath);
+      const protectedFile = fs.statSync(protectedPath);
+      if (target.dev === protectedFile.dev && target.ino === protectedFile.ino) {
+        throw new Error("The protected original database cannot be used by this security branch.");
+      }
+    }
+    if (
+      process.env.NODE_ENV !== "production" &&
+      physicalPath !== fs.realpathSync(path.resolve(process.cwd(), "prisma/dev-isolated.db"))
+    ) {
+      throw new Error("Development and test database must be prisma/dev-isolated.db.");
+    }
+
     datasources = {
       db: {
         url: databaseUrl,
@@ -38,7 +56,7 @@ function getPrismaClient(): PrismaClient {
 
   return new PrismaClient({
     datasources,
-    log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
+    log: [],
   });
 }
 

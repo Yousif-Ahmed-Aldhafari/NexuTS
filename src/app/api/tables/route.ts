@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireAuth, resolveProjectAccess, resolveTableAccess } from "@/lib/auth/access-control";
+import { secureMutation, tableInput } from "@/lib/auth/mutation-guard";
 import { prisma } from "@/lib/prisma";
 
 const TABLE_TYPES = ["TEST_CASES", "ISSUE_LOGS"] as const;
@@ -35,7 +36,7 @@ export async function GET(req: Request) {
   }
 }
 
-export async function POST(req: Request) {
+async function postHandler(req: Request) {
   const authCheck = await requireAuth();
   if (!authCheck.authenticated) return authCheck.response;
   const { user } = authCheck;
@@ -95,7 +96,7 @@ export async function POST(req: Request) {
   }
 }
 
-export async function PUT(req: Request) {
+async function putHandler(req: Request) {
   const authCheck = await requireAuth();
   if (!authCheck.authenticated) return authCheck.response;
   const { user } = authCheck;
@@ -146,7 +147,7 @@ export async function PUT(req: Request) {
   }
 }
 
-export async function DELETE(req: Request) {
+async function deleteHandler(req: Request) {
   const authCheck = await requireAuth();
   if (!authCheck.authenticated) return authCheck.response;
   const { user } = authCheck;
@@ -173,3 +174,9 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "Failed to delete table" }, { status: 500 });
   }
 }
+
+export const POST = secureMutation(postHandler, tableInput);
+
+export const PUT = secureMutation(putHandler, tableInput);
+
+export const DELETE = secureMutation(deleteHandler, undefined);

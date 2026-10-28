@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
 
+import { auth } from "@/auth";
+import { adminCreateSchema, adminUpdateSchema } from "@/lib/auth/account-schemas";
 import { getCurrentUser, parseNumericId } from "@/lib/auth/current-user";
 import { hashPassword } from "@/lib/auth/password";
+import { enforceRateLimit } from "@/lib/auth/rate-limit";
+import { checkOrigin, RequestError, readBody, requestFailure } from "@/lib/auth/request-security";
 import { isAdminRole, isValidRole, normalizeRole, USER_ROLES } from "@/lib/auth/roles";
-import { MIN_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH_MESSAGE } from "@/lib/password-rules";
+import { requireRecentAuthentication } from "@/lib/auth/session-lifecycle";
+import { isStrongPassword, MIN_PASSWORD_LENGTH_MESSAGE } from "@/lib/password-rules";
 import { prisma } from "@/lib/prisma";
 
 const toSafeUserPayload = (user: {
@@ -20,7 +25,7 @@ const toSafeUserPayload = (user: {
   emailVerified: user.emailVerified,
 });
 
-async function requireAdmin() {
+async function requireAdmin(req?: Request) {
   const user = await getCurrentUser();
   if (!user) {
     return {
@@ -36,6 +41,16 @@ async function requireAdmin() {
     };
   }
 
+  if (req) {
+    try {
+      checkOrigin(req);
+      const session = await auth();
+      requireRecentAuthentication(session?.authenticatedAt);
+      await enforceRateLimit("admin-account-change", String(user.id), 30);
+    } catch (error) {
+      return { ok: false as const, response: requestFailure(error) };
+    }
+  }
   return { ok: true as const, user };
 }
 
@@ -65,11 +80,11 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const adminCheck = await requireAdmin();
+  const adminCheck = await requireAdmin(req);
   if (!adminCheck.ok) return adminCheck.response;
 
   try {
-    const body = await req.json().catch(() => ({}));
+    const body = await readBody(req, adminCreateSchema, 8192);
     const name = typeof body?.name === "string" ? body.name.trim() : "";
     const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
     const password = typeof body?.password === "string" ? body.password : "";
@@ -78,7 +93,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Name, email, and password are required." }, { status: 400 });
     }
 
-    if (password.length < MIN_PASSWORD_LENGTH) {
+    if (!isStrongPassword(password)) {
       return NextResponse.json({ error: MIN_PASSWORD_LENGTH_MESSAGE }, { status: 400 });
     }
 
@@ -113,19 +128,21 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true, user: toSafeUserPayload(createdUser) }, { status: 201 });
-  } catch (_error) {
-    return NextResponse.json({ error: "Failed to create user." }, { status: 500 });
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("LAST_ADMIN"))
+      return requestFailure(new RequestError(409, "Cannot remove the last active administrator."));
+    return requestFailure(error);
   }
 }
 
 export async function PUT(req: Request) {
-  const adminCheck = await requireAdmin();
+  const adminCheck = await requireAdmin(req);
   if (!adminCheck.ok) return adminCheck.response;
 
   try {
-    const body = await req.json().catch(() => ({}));
-    const action = typeof body?.action === "string" ? body.action : "";
-    const userId = parseNumericId(body?.id);
+    const body = await readBody(req, adminUpdateSchema, 8192);
+    const action = body.action;
+    const userId = parseNumericId(String(body.id));
 
     if (userId === null) {
       return NextResponse.json({ error: "A valid user id is required." }, { status: 400 });
@@ -201,7 +218,7 @@ export async function PUT(req: Request) {
 
     if (action === "reset-password") {
       const newPassword = typeof body?.newPassword === "string" ? body.newPassword : "";
-      if (newPassword.length < MIN_PASSWORD_LENGTH) {
+      if (!isStrongPassword(newPassword)) {
         return NextResponse.json({ error: MIN_PASSWORD_LENGTH_MESSAGE }, { status: 400 });
       }
 
@@ -251,13 +268,15 @@ export async function PUT(req: Request) {
     }
 
     return NextResponse.json({ error: "Invalid action." }, { status: 400 });
-  } catch (_error) {
-    return NextResponse.json({ error: "Failed to update user." }, { status: 500 });
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("LAST_ADMIN"))
+      return requestFailure(new RequestError(409, "Cannot remove the last active administrator."));
+    return requestFailure(error);
   }
 }
 
 export async function DELETE(req: Request) {
-  const adminCheck = await requireAdmin();
+  const adminCheck = await requireAdmin(req);
   if (!adminCheck.ok) return adminCheck.response;
 
   try {
@@ -291,7 +310,9 @@ export async function DELETE(req: Request) {
 
     await prisma.user.delete({ where: { id: userId } });
     return NextResponse.json({ success: true });
-  } catch (_error) {
-    return NextResponse.json({ error: "Failed to delete user." }, { status: 500 });
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("LAST_ADMIN"))
+      return requestFailure(new RequestError(409, "Cannot remove the last active administrator."));
+    return requestFailure(error);
   }
 }

@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { requireAuth, resolveEntryAccess, resolveTableAccess } from "@/lib/auth/access-control";
+import { entryInput, secureMutation } from "@/lib/auth/mutation-guard";
 import { prisma } from "@/lib/prisma";
 import { validateAndNormalizeEntryInput } from "@/lib/qa-entry-schema";
 
-export async function POST(req: Request) {
+async function postHandler(req: Request) {
   const authCheck = await requireAuth();
   if (!authCheck.authenticated) return authCheck.response;
   const { user } = authCheck;
@@ -40,7 +41,7 @@ export async function POST(req: Request) {
   }
 }
 
-export async function PUT(req: Request) {
+async function putHandler(req: Request) {
   const authCheck = await requireAuth();
   if (!authCheck.authenticated) return authCheck.response;
   const { user } = authCheck;
@@ -53,7 +54,7 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: "Entry ID is required." }, { status: 400 });
     }
 
-    const entryId = Number.parseInt(String(id), 10);
+    const entryId = Number(id);
     if (!Number.isSafeInteger(entryId) || entryId <= 0) {
       return NextResponse.json({ error: "Invalid Entry ID." }, { status: 400 });
     }
@@ -83,7 +84,7 @@ export async function PUT(req: Request) {
   }
 }
 
-export async function DELETE(req: Request) {
+async function deleteHandler(req: Request) {
   const authCheck = await requireAuth();
   if (!authCheck.authenticated) return authCheck.response;
   const { user } = authCheck;
@@ -94,7 +95,7 @@ export async function DELETE(req: Request) {
 
     if (!id) return NextResponse.json({ error: "ID is required" }, { status: 400 });
 
-    const entryId = Number.parseInt(id, 10);
+    const entryId = Number(id);
     if (!Number.isSafeInteger(entryId) || entryId <= 0) {
       return NextResponse.json({ error: "Invalid Entry ID." }, { status: 400 });
     }
@@ -114,3 +115,9 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "Failed to delete entry" }, { status: 500 });
   }
 }
+
+export const POST = secureMutation(postHandler, entryInput);
+
+export const PUT = secureMutation(putHandler, entryInput);
+
+export const DELETE = secureMutation(deleteHandler, undefined, true);

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { canManageProject, requireAuth } from "@/lib/auth/access-control";
+import { projectInput, secureMutation } from "@/lib/auth/mutation-guard";
 import { prisma } from "@/lib/prisma";
 
 const normalizeText = (value: string) => value.trim().toLowerCase();
@@ -32,7 +33,7 @@ export async function GET() {
   }
 }
 
-export async function POST(req: Request) {
+async function postHandler(req: Request) {
   const authCheck = await requireAuth();
   if (!authCheck.authenticated) return authCheck.response;
   const { user } = authCheck;
@@ -145,7 +146,7 @@ export async function POST(req: Request) {
   }
 }
 
-export async function PUT(req: Request) {
+async function putHandler(req: Request) {
   const authCheck = await requireAuth();
   if (!authCheck.authenticated) return authCheck.response;
   const { user } = authCheck;
@@ -247,7 +248,7 @@ export async function PUT(req: Request) {
   }
 }
 
-export async function DELETE(req: Request) {
+async function deleteHandler(req: Request) {
   const authCheck = await requireAuth();
   if (!authCheck.authenticated) return authCheck.response;
   const { user } = authCheck;
@@ -278,3 +279,9 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "Failed to delete project" }, { status: 500 });
   }
 }
+
+export const POST = secureMutation(postHandler, projectInput);
+
+export const PUT = secureMutation(putHandler, projectInput);
+
+export const DELETE = secureMutation(deleteHandler, undefined);

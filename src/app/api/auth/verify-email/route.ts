@@ -1,57 +1,33 @@
 import { NextResponse } from "next/server";
 
-import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
+import { z } from "zod";
 
-const parseNumericId = (value: string | null | undefined) => {
-  if (!value) return null;
-  const parsed = Number.parseInt(value, 10);
-  return Number.isSafeInteger(parsed) ? parsed : null;
-};
+import { getCurrentUser } from "@/lib/auth/current-user";
+import { enforceRateLimit } from "@/lib/auth/rate-limit";
+import { RequestError, readBody, requestFailure } from "@/lib/auth/request-security";
+import { consumeVerification, deliverVerification, issueVerification } from "@/lib/auth/verification";
 
-const getCurrentUser = async () => {
-  const session = await auth();
-  if (!session?.user) return null;
-
-  const sessionUserId = parseNumericId(session.user.id);
-  if (sessionUserId !== null) {
-    return prisma.user.findUnique({ where: { id: sessionUserId } });
-  }
-
-  if (session.user.email) {
-    return prisma.user.findUnique({ where: { email: session.user.email } });
-  }
-
-  return null;
-};
-
+const schema = z.union([
+  z.object({ action: z.literal("request") }).strict(),
+  z.object({ code: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
+]);
 export async function POST(req: Request) {
   try {
     const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user?.email) throw new RequestError(401, "Unauthorized");
+    await enforceRateLimit("verify-attempt", String(user.id), 10);
+    const body = await readBody(req, schema, 4096);
+    if ("action" in body) {
+      await enforceRateLimit("verify-send", String(user.id), 3, 3600);
+      if (!process.env.RESEND_API_KEY || !process.env.EMAIL_FROM)
+        throw new RequestError(503, "Email delivery is not configured. Contact your administrator.");
+      const token = await issueVerification(user.id, user.email);
+      await deliverVerification(user.email, token);
+      return NextResponse.json({ success: true });
     }
-
-    const body = await req.json().catch(() => ({}));
-    const code = typeof body?.code === "string" ? body.code.trim() : "";
-    if (!code) {
-      return NextResponse.json({ error: "Verification code is required." }, { status: 400 });
-    }
-
-    const updated = await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        emailVerified: new Date(),
-      },
-      select: {
-        id: true,
-        email: true,
-        emailVerified: true,
-      },
-    });
-
-    return NextResponse.json({ success: true, user: updated });
-  } catch (_error) {
-    return NextResponse.json({ error: "Failed to verify email." }, { status: 500 });
+    const verifiedUser = await consumeVerification(user.id, user.email, body.code);
+    return NextResponse.json({ success: true, user: verifiedUser });
+  } catch (error) {
+    return requestFailure(error);
   }
 }

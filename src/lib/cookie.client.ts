@@ -4,7 +4,8 @@
 
 export function setClientCookie(key: string, value: string, days = 7) {
   const expires = new Date(Date.now() + days * 864e5).toUTCString();
-  document.cookie = `${key}=${value}; expires=${expires}; path=/`;
+  // biome-ignore lint/suspicious/noDocumentCookie: Non-auth preference cookies must support browsers without Cookie Store.
+  document.cookie = `${encodeURIComponent(key)}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
 }
 
 export function getClientCookie(key: string) {
@@ -15,5 +16,6 @@ export function getClientCookie(key: string) {
 }
 
 export function deleteClientCookie(key: string) {
-  document.cookie = `${key}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`;
+  // biome-ignore lint/suspicious/noDocumentCookie: Deletes only client-readable preference cookies.
+  document.cookie = `${encodeURIComponent(key)}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
 }
