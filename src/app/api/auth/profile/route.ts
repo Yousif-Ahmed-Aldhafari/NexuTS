@@ -1,34 +1,12 @@
 import { NextResponse } from "next/server";
 
-import { auth } from "@/auth";
-import { LOCALE_VALUES, type AppLocale } from "@/lib/i18n";
-import { MIN_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH_MESSAGE } from "@/lib/password-rules";
+import { profileSchema } from "@/lib/auth/account-schemas";
+import { getCurrentUser } from "@/lib/auth/current-user";
+import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { enforceRateLimit } from "@/lib/auth/rate-limit";
+import { RequestError, readBody, requestFailure } from "@/lib/auth/request-security";
+import { isStrongPassword, MIN_PASSWORD_LENGTH_MESSAGE } from "@/lib/password-rules";
 import { prisma } from "@/lib/prisma";
-
-const parseNumericId = (value: string | null | undefined) => {
-  if (!value) return null;
-  const parsed = Number.parseInt(value, 10);
-  return Number.isSafeInteger(parsed) ? parsed : null;
-};
-
-const isSupportedLocale = (value: unknown): value is AppLocale =>
-  typeof value === "string" && LOCALE_VALUES.includes(value as AppLocale);
-
-const getCurrentUser = async () => {
-  const session = await auth();
-  if (!session?.user) return null;
-
-  const sessionUserId = parseNumericId(session.user.id);
-  if (sessionUserId !== null) {
-    return prisma.user.findUnique({ where: { id: sessionUserId } });
-  }
-
-  if (session.user.email) {
-    return prisma.user.findUnique({ where: { email: session.user.email } });
-  }
-
-  return null;
-};
 
 export async function GET() {
   try {
@@ -42,7 +20,7 @@ export async function GET() {
       name: user.name || "",
       email: user.email || "",
       emailVerified: user.emailVerified,
-      language: isSupportedLocale(user.language) ? user.language : "en",
+      language: user.language === "ar" ? "ar" : "en",
     });
   } catch (_error) {
     return NextResponse.json({ error: "Failed to load profile." }, { status: 500 });
@@ -56,8 +34,9 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await req.json();
-    const action = typeof body?.action === "string" ? body.action : "";
+    const body = await readBody(req, profileSchema, 8192);
+    await enforceRateLimit("profile-change", String(user.id), 10);
+    const action = body.action;
 
     if (action === "update-username") {
       const username = typeof body?.username === "string" ? body.username.trim() : "";
@@ -68,6 +47,14 @@ export async function PUT(req: Request) {
       const updated = await prisma.user.update({
         where: { id: user.id },
         data: { name: username },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true,
+          language: true,
+          role: true,
+        },
       });
 
       return NextResponse.json({ success: true, user: updated });
@@ -82,7 +69,7 @@ export async function PUT(req: Request) {
         return NextResponse.json({ error: "All password fields are required." }, { status: 400 });
       }
 
-      if (newPassword.length < MIN_PASSWORD_LENGTH) {
+      if (!isStrongPassword(newPassword)) {
         return NextResponse.json({ error: MIN_PASSWORD_LENGTH_MESSAGE }, { status: 400 });
       }
 
@@ -90,21 +77,25 @@ export async function PUT(req: Request) {
         return NextResponse.json({ error: "Confirm password does not match." }, { status: 400 });
       }
 
-      if (!user.password || user.password !== currentPassword) {
+      const { valid } = await verifyPassword(currentPassword, user.password);
+      if (!valid) {
         return NextResponse.json({ error: "Current password is incorrect." }, { status: 400 });
       }
 
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { password: newPassword },
+      const hashedPassword = await hashPassword(newPassword);
+
+      const changed = await prisma.user.updateMany({
+        where: { id: user.id, password: user.password, sessionVersion: user.sessionVersion, disabled: false },
+        data: { password: hashedPassword },
       });
+      if (changed.count !== 1) throw new RequestError(409, "Account changed. Sign in again.");
 
       return NextResponse.json({ success: true });
     }
 
     if (action === "update-language") {
       const language = body?.language;
-      if (!isSupportedLocale(language)) {
+      if (language !== "en" && language !== "ar") {
         return NextResponse.json({ error: "Invalid language." }, { status: 400 });
       }
 
@@ -117,7 +108,7 @@ export async function PUT(req: Request) {
     }
 
     return NextResponse.json({ error: "Invalid action." }, { status: 400 });
-  } catch (_error) {
-    return NextResponse.json({ error: "Failed to update profile." }, { status: 500 });
+  } catch (error) {
+    return requestFailure(error);
   }
 }

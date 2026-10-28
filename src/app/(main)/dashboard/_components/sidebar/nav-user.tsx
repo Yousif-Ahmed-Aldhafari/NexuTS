@@ -56,7 +56,11 @@ export function NavUser({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Avatar className="h-9 w-9 cursor-pointer rounded-full border border-border">
+          <Avatar
+            id="user-menu-trigger"
+            aria-label="Open user menu"
+            className="h-9 w-9 cursor-pointer rounded-full border border-border"
+          >
             <AvatarImage src={user.avatar || undefined} alt={user.name} />
             <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
           </Avatar>

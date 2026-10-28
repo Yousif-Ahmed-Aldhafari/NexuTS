@@ -1,19 +1,28 @@
 import { NextResponse } from "next/server";
 
-import { auth } from "@/auth";
-import { isAdminRole } from "@/lib/auth/roles";
+import { requireAuth, resolveProjectAccess, resolveTableAccess } from "@/lib/auth/access-control";
+import { secureMutation, tableInput } from "@/lib/auth/mutation-guard";
 import { prisma } from "@/lib/prisma";
 
 const TABLE_TYPES = ["TEST_CASES", "ISSUE_LOGS"] as const;
 const normalizeText = (value: string) => value.trim().toLowerCase();
 
 export async function GET(req: Request) {
+  const authCheck = await requireAuth();
+  if (!authCheck.authenticated) return authCheck.response;
+  const { user } = authCheck;
+
   try {
     const { searchParams } = new URL(req.url);
     const projectId = searchParams.get("projectId");
 
     if (!projectId) {
       return NextResponse.json({ error: "Project ID is required" }, { status: 400 });
+    }
+
+    const project = await resolveProjectAccess(projectId, user);
+    if (!project) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
     const tables = await prisma.table.findMany({
@@ -27,18 +36,17 @@ export async function GET(req: Request) {
   }
 }
 
-export async function POST(req: Request) {
+async function postHandler(req: Request) {
+  const authCheck = await requireAuth();
+  if (!authCheck.authenticated) return authCheck.response;
+  const { user } = authCheck;
+
+  if (!user.isAdmin) {
+    return NextResponse.json({ error: "Only admins can create tables." }, { status: 403 });
+  }
+
   try {
-    const session = await auth();
-
-    if (!session?.user) {
-      return NextResponse.json({ error: "You must be signed in to create a table." }, { status: 401 });
-    }
-    if (!isAdminRole(session.user.role)) {
-      return NextResponse.json({ error: "Only admins can create tables." }, { status: 403 });
-    }
-
-    const createdBy = session?.user?.name || session?.user?.email || "Unknown";
+    const createdBy = user.name || user.email?.split("@")[0] || "Unknown";
     const body = await req.json();
     const { name, projectId, tableType } = body;
     const normalizedName = typeof name === "string" ? name.trim() : "";
@@ -49,6 +57,11 @@ export async function POST(req: Request) {
 
     if (!TABLE_TYPES.includes(tableType)) {
       return NextResponse.json({ error: "Table Type is required." }, { status: 400 });
+    }
+
+    const project = await resolveProjectAccess(projectId, user);
+    if (!project) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
     const normalizedTableType = tableType;
@@ -83,7 +96,11 @@ export async function POST(req: Request) {
   }
 }
 
-export async function PUT(req: Request) {
+async function putHandler(req: Request) {
+  const authCheck = await requireAuth();
+  if (!authCheck.authenticated) return authCheck.response;
+  const { user } = authCheck;
+
   try {
     const body = await req.json();
     const { id, name, tableType } = body;
@@ -93,11 +110,7 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: "Table ID and name are required" }, { status: 400 });
     }
 
-    const existingTable = await prisma.table.findUnique({
-      where: { id },
-      select: { id: true, projectId: true },
-    });
-
+    const existingTable = await resolveTableAccess(id, user);
     if (!existingTable) {
       return NextResponse.json({ error: "Table not found." }, { status: 404 });
     }
@@ -134,13 +147,22 @@ export async function PUT(req: Request) {
   }
 }
 
-export async function DELETE(req: Request) {
+async function deleteHandler(req: Request) {
+  const authCheck = await requireAuth();
+  if (!authCheck.authenticated) return authCheck.response;
+  const { user } = authCheck;
+
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
 
     if (!id) {
       return NextResponse.json({ error: "Table ID is required" }, { status: 400 });
+    }
+
+    const existingTable = await resolveTableAccess(id, user);
+    if (!existingTable) {
+      return NextResponse.json({ error: "Table not found." }, { status: 404 });
     }
 
     await prisma.table.delete({
@@ -152,3 +174,9 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "Failed to delete table" }, { status: 500 });
   }
 }
+
+export const POST = secureMutation(postHandler, tableInput);
+
+export const PUT = secureMutation(putHandler, tableInput);
+
+export const DELETE = secureMutation(deleteHandler, undefined);

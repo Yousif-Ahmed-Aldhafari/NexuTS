@@ -57,15 +57,6 @@ export async function authenticate(_prevState: string | undefined, formData: For
     return "Invalid credentials.";
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: normalizedEmail },
-    select: { id: true, language: true },
-  });
-
-  if (!user) {
-    return "This User Does not exits!";
-  }
-
   try {
     const redirectUrl = await signIn("credentials", {
       email: normalizedEmail,
@@ -75,8 +66,9 @@ export async function authenticate(_prevState: string | undefined, formData: For
       redirectTo: "/dashboard/home-page",
     });
 
+    const user = await prisma.user.findUnique({ where: { email: normalizedEmail }, select: { language: true } });
     const cookieStore = await cookies();
-    const language = user.language === "ar" ? "ar" : "en";
+    const language = user?.language === "ar" ? "ar" : "en";
     cookieStore.set(LANGUAGE_COOKIE_NAME, language, {
       path: "/",
       maxAge: THIRTY_DAYS_IN_SECONDS,

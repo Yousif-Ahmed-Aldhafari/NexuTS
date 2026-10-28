@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { requireAuth, resolveTableAccess } from "@/lib/auth/access-control";
 import { prisma } from "@/lib/prisma";
 
 type RouteContext = {
@@ -7,8 +8,17 @@ type RouteContext = {
 };
 
 export async function GET(_req: Request, { params }: RouteContext) {
+  const authCheck = await requireAuth();
+  if (!authCheck.authenticated) return authCheck.response;
+  const { user } = authCheck;
+
   try {
     const { tableId } = await params;
+    const table = await resolveTableAccess(tableId, user);
+    if (!table) {
+      return NextResponse.json({ error: "Table not found." }, { status: 404 });
+    }
+
     const entries = await prisma.entry.findMany({
       where: {
         tableId,

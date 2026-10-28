@@ -367,6 +367,7 @@ export const enMessages = {
   "settings.editUsernameTitle": "Edit Username",
   "settings.editUsernameDescription": "Update your username and save the change.",
   "settings.verifyEmailTitle": "Verify Email",
+  "settings.requestVerification": "Send verification token",
   "settings.verifyEmailDescription": "Enter the verification code to verify your email.",
   "settings.verificationCode": "Verification Code",
   "settings.verificationCodePlaceholder": "Enter verification code",

@@ -1,22 +1,29 @@
 import { NextResponse } from "next/server";
 
-import { auth } from "@/auth";
-import { isAdminRole } from "@/lib/auth/roles";
+import { canManageProject, requireAuth } from "@/lib/auth/access-control";
+import { projectInput, secureMutation } from "@/lib/auth/mutation-guard";
 import { prisma } from "@/lib/prisma";
 
 const normalizeText = (value: string) => value.trim().toLowerCase();
-const parseNumericId = (value: string | null | undefined) => {
-  if (!value) return null;
-  const parsed = Number.parseInt(value, 10);
-  return Number.isSafeInteger(parsed) ? parsed : null;
-};
 
 export async function GET() {
+  const authCheck = await requireAuth();
+  if (!authCheck.authenticated) return authCheck.response;
+  const { user } = authCheck;
+
   try {
+    const whereClause = user.isAdmin ? {} : { userId: user.id };
     const projects = await prisma.project.findMany({
+      where: whereClause,
       include: {
         tables: true,
-        user: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -26,18 +33,17 @@ export async function GET() {
   }
 }
 
-export async function POST(req: Request) {
+async function postHandler(req: Request) {
+  const authCheck = await requireAuth();
+  if (!authCheck.authenticated) return authCheck.response;
+  const { user } = authCheck;
+
+  if (!user.isAdmin) {
+    return NextResponse.json({ error: "Only admins can add projects." }, { status: 403 });
+  }
+
   try {
-    const session = await auth();
-
-    if (!session?.user) {
-      return NextResponse.json({ error: "You must be signed in to create a project" }, { status: 401 });
-    }
-    if (!isAdminRole(session.user.role)) {
-      return NextResponse.json({ error: "Only admins can add projects." }, { status: 403 });
-    }
-
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
     const { name, url, logo } = body;
     const normalizedName = typeof name === "string" ? name.trim() : "";
     const normalizedUrl = typeof url === "string" ? url.trim() : "";
@@ -74,46 +80,20 @@ export async function POST(req: Request) {
       }
     }
 
-    let dbUser: { id: number; name: string | null; email: string | null } | null = null;
-    const sessionUserId = parseNumericId(session.user.id);
-
-    if (sessionUserId !== null) {
-      dbUser = await prisma.user.findUnique({
-        where: { id: sessionUserId },
-        select: { id: true, name: true, email: true },
-      });
-    } else if (session.user.email) {
-      dbUser = await prisma.user.findUnique({
-        where: { email: session.user.email },
-        select: { id: true, name: true, email: true },
-      });
-    }
-
-    const createdByUsername =
-      dbUser?.name || session.user.name || dbUser?.email?.split("@")[0] || session.user.email?.split("@")[0];
-
-    if (!createdByUsername) {
-      return NextResponse.json(
-        { error: "Could not determine username for project creator. Please update your profile name." },
-        { status: 400 },
-      );
-    }
+    const createdByUsername = user.name || user.email?.split("@")[0] || "Unknown";
 
     const baseData = {
       name: normalizedName,
       url: normalizedUrl || null,
       logo: logo || null,
     };
-    const creatorUserId = dbUser?.id ?? sessionUserId ?? null;
-    const userConnectData = creatorUserId
-      ? {
-          user: {
-            connect: {
-              id: creatorUserId,
-            },
-          },
-        }
-      : {};
+    const userConnectData = {
+      user: {
+        connect: {
+          id: user.id,
+        },
+      },
+    };
 
     let project: Awaited<ReturnType<typeof prisma.project.create>>;
     try {
@@ -161,13 +141,17 @@ export async function POST(req: Request) {
 
     return NextResponse.json(project, { status: 201 });
   } catch (error) {
-    const details = error instanceof Error ? error.message : "Unknown server error";
-    return NextResponse.json({ error: "Failed to add project", details }, { status: 500 });
+    console.error("[api/projects] Failed to add project:", error);
+    return NextResponse.json({ error: "Failed to add project" }, { status: 500 });
   }
 }
 
-export async function PUT(req: Request) {
-  const body = await req.json();
+async function putHandler(req: Request) {
+  const authCheck = await requireAuth();
+  if (!authCheck.authenticated) return authCheck.response;
+  const { user } = authCheck;
+
+  const body = await req.json().catch(() => ({}));
   const { id, name, url, logo } = body;
   const normalizedName = typeof name === "string" ? name.trim() : "";
   const normalizedUrl = typeof url === "string" ? url.trim() : "";
@@ -178,6 +162,15 @@ export async function PUT(req: Request) {
 
   if (logo && (typeof logo !== "string" || !logo.startsWith("data:image/png;base64,"))) {
     return NextResponse.json({ error: "Project logo must be a PNG file." }, { status: 400 });
+  }
+
+  const existingProject = await prisma.project.findUnique({
+    where: { id },
+    select: { id: true, userId: true },
+  });
+
+  if (!existingProject || !canManageProject(user, existingProject)) {
+    return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
   const existingProjects = await prisma.project.findMany({
@@ -255,13 +248,26 @@ export async function PUT(req: Request) {
   }
 }
 
-export async function DELETE(req: Request) {
+async function deleteHandler(req: Request) {
+  const authCheck = await requireAuth();
+  if (!authCheck.authenticated) return authCheck.response;
+  const { user } = authCheck;
+
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
 
     if (!id) {
       return NextResponse.json({ error: "Project ID is required" }, { status: 400 });
+    }
+
+    const existingProject = await prisma.project.findUnique({
+      where: { id },
+      select: { id: true, userId: true },
+    });
+
+    if (!existingProject || !canManageProject(user, existingProject)) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
     await prisma.project.delete({
@@ -273,3 +279,9 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "Failed to delete project" }, { status: 500 });
   }
 }
+
+export const POST = secureMutation(postHandler, projectInput);
+
+export const PUT = secureMutation(putHandler, projectInput);
+
+export const DELETE = secureMutation(deleteHandler, undefined);

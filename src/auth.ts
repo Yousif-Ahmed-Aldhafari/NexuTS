@@ -2,11 +2,12 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
-// We import bcryptjs dynamically or define our own basic comparison to avoid edge runtime issues with bcrypt.
-// Note: bcryptjs works but can be tricky in Next.js edge runtime.
-
-import { DEFAULT_LOCALE, LOCALE_VALUES, type AppLocale } from "./lib/i18n";
-import { isAdminEmail, isAdminRole, normalizeEmail, normalizeRole, USER_ROLES } from "./lib/auth/roles";
+import { hashPassword, verifyPassword } from "./lib/auth/password";
+import { enforceRateLimit } from "./lib/auth/rate-limit";
+import { emailField } from "./lib/auth/request-security";
+import { normalizeEmail, normalizeRole } from "./lib/auth/roles";
+import { NORMAL_SESSION_AGE, SESSION_MAX_AGE, validateSessionToken } from "./lib/auth/session-lifecycle";
+import { type AppLocale, DEFAULT_LOCALE, LOCALE_VALUES } from "./lib/i18n";
 import { prisma } from "./lib/prisma";
 
 const isSupportedLocale = (value: unknown): value is AppLocale =>
@@ -27,7 +28,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
   adapter: PrismaAdapter(prisma),
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", maxAge: SESSION_MAX_AGE },
+  jwt: { maxAge: SESSION_MAX_AGE },
+  logger: {
+    error() {
+      console.error("[auth] Authentication operation failed.");
+    },
+  },
   pages: {
     signIn: "/auth/v2/login",
   },
@@ -40,8 +47,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         remember: { label: "Remember Me", type: "text" },
       },
       async authorize(credentials) {
+        const parsedEmail = emailField.safeParse(credentials?.email);
+        if (
+          !parsedEmail.success ||
+          typeof credentials?.password !== "string" ||
+          !credentials.password ||
+          credentials.password.length > 1024
+        )
+          return null;
+        try {
+          await enforceRateLimit("login-account", parsedEmail.data, 8);
+          await enforceRateLimit("login-global", "all", 3000);
+        } catch {
+          return null;
+        }
         if (!credentials?.email || !credentials?.password) {
-          throw new Error("Invalid credentials");
+          return null;
         }
 
         const submittedEmail = String(credentials.email).trim();
@@ -61,23 +82,58 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           });
         }
 
-        if (!user || !user?.password) {
-          throw new Error("Invalid credentials");
+        if (!user || !user.password || user.disabled) {
+          await verifyPassword(
+            String(credentials.password),
+            "$2b$12$5KqID.TUwUmS8BkawYPxVuI9gfo1jJr0J1E3HwFh7xvJXch8RDc0K",
+          );
+          return null;
         }
 
-        // For this demo, we do a raw comparison since we autocreated above. Use bcrypt.compare in prod.
-        if (user.password !== credentials.password) {
-          throw new Error("Incorrect password");
+        const candidatePassword = String(credentials.password);
+        const { valid, needsUpgrade } = await verifyPassword(candidatePassword, user.password);
+
+        if (!valid) {
+          return null;
         }
 
-        if (isAdminEmail(user.email) && !isAdminRole(user.role)) {
-          user = await prisma.user.update({
-            where: { id: user.id },
-            data: { role: USER_ROLES.ADMIN },
-          });
+        let authenticatedVersion = user.sessionVersion;
+        let authenticatedPassword = user.password;
+        if (needsUpgrade) {
+          try {
+            const upgradedHash = await hashPassword(candidatePassword);
+            const upgraded = await prisma.user.updateMany({
+              where: {
+                id: user.id,
+                password: user.password,
+                sessionVersion: user.sessionVersion,
+              },
+              data: {
+                password: upgradedHash,
+              },
+            });
+            if (upgraded.count !== 1) return null;
+            authenticatedPassword = upgradedHash;
+            authenticatedVersion += 1;
+          } catch (_upgradeError) {
+            console.error("[auth] Legacy credential upgrade failed.");
+            return null;
+          }
         }
 
+        const freshUser = await prisma.user.findUnique({ where: { id: user.id } });
+        if (
+          !freshUser ||
+          freshUser.disabled ||
+          freshUser.sessionVersion !== authenticatedVersion ||
+          freshUser.password !== authenticatedPassword
+        )
+          return null;
         return {
+          sessionVersion: freshUser.sessionVersion,
+          authenticatedAt: Math.floor(Date.now() / 1000),
+          absoluteExpiresAt:
+            Math.floor(Date.now() / 1000) + (credentials.remember === "true" ? SESSION_MAX_AGE : NORMAL_SESSION_AGE),
           id: String(user.id),
           email: user.email,
           name: user.name,
@@ -88,9 +144,33 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
+  events: {
+    async signOut(message) {
+      if (
+        "token" in message &&
+        message.token?.sub &&
+        /^[1-9]\d*$/.test(message.token.sub) &&
+        typeof message.token.sessionVersion === "number"
+      ) {
+        await prisma.user.updateMany({
+          where: { id: Number(message.token.sub), sessionVersion: message.token.sessionVersion },
+          data: { sessionVersion: { increment: 1 } },
+        });
+      }
+    },
+  },
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      try {
+        const target = new URL(url, baseUrl);
+        return target.origin === new URL(baseUrl).origin ? target.href : baseUrl;
+      } catch {
+        return baseUrl;
+      }
+    },
     async session({ token, session }) {
       if (token.sub && session.user) {
+        session.authenticatedAt = token.authenticatedAt as number;
         session.user.id = token.sub;
         session.user.role = normalizeRole(typeof token.role === "string" ? token.role : undefined);
         session.user.language = isSupportedLocale(token.language) ? token.language : DEFAULT_LOCALE;
@@ -105,43 +185,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.language = isSupportedLocale(user.language) ? user.language : DEFAULT_LOCALE;
       }
 
-      try {
-        const sessionUserId = token.sub ? Number.parseInt(token.sub, 10) : Number.NaN;
-        const normalizedTokenEmail = normalizeEmail(token.email);
-        const dbUser =
-          Number.isSafeInteger(sessionUserId) && sessionUserId > 0
-            ? await prisma.user.findUnique({
-                where: { id: sessionUserId },
-                select: { id: true, email: true, role: true, language: true },
-              })
-            : normalizedTokenEmail
-              ? await prisma.user.findUnique({
-                  where: { email: normalizedTokenEmail },
-                  select: { id: true, email: true, role: true, language: true },
-                })
-              : null;
-
-        if (dbUser) {
-          let currentRole = normalizeRole(dbUser.role);
-          if (isAdminEmail(dbUser.email) && !isAdminRole(dbUser.role)) {
-            const updatedUser = await prisma.user.update({
-              where: { id: dbUser.id },
-              data: { role: USER_ROLES.ADMIN },
-              select: { role: true },
-            });
-            currentRole = normalizeRole(updatedUser.role);
-          }
-
-          token.role = currentRole;
-          token.sub = String(dbUser.id);
-          token.email = dbUser.email ?? token.email;
-          token.language = isSupportedLocale(dbUser.language) ? dbUser.language : DEFAULT_LOCALE;
-        }
-      } catch (error) {
-        console.error("[auth][jwt] Failed to hydrate role from database", error);
+      if (user) {
+        token.sessionVersion = user.sessionVersion;
+        token.authenticatedAt = user.authenticatedAt;
+        token.absoluteExpiresAt = user.absoluteExpiresAt;
       }
-
-      return token;
+      try {
+        return await validateSessionToken(token);
+      } catch {
+        return null;
+      }
     },
   },
 });

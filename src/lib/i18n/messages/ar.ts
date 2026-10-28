@@ -345,6 +345,7 @@ export const arMessages = {
   "settings.editUsernameTitle": "تحرير اسم المستخدم",
   "settings.editUsernameDescription": "قم بتحديث اسم المستخدم الخاص بك واحفظ التغيير.",
   "settings.verifyEmailTitle": "التحقق من البريد الإلكتروني",
+  "settings.requestVerification": "إرسال رمز التحقق",
   "settings.verifyEmailDescription": "أدخل رمز التحقق للتحقق من بريدك الإلكتروني.",
   "settings.verificationCode": "رمز التحقق",
   "settings.verificationCodePlaceholder": "أدخل رمز التحقق",

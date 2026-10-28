@@ -8,6 +8,8 @@
 
 # testing
 /coverage
+/playwright-report/
+/test-results/
 
 # next.js
 /.next/
@@ -35,3 +37,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# SQLite isolated database
+prisma/dev-isolated.db*
+
+
+# Local verification delivery files (secrets)
+.local-verification/

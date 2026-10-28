@@ -9,6 +9,7 @@ import { getSession } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { logOut } from "@/actions/auth";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import {
   AlertDialog,
@@ -277,11 +278,6 @@ export function SystemSettingsContent({ mode = "page", tabQuery }: SystemSetting
   };
 
   const handleOpenPasswordDialog = () => {
-    if (!isAdmin) {
-      openNonAdminRestrictionDialog();
-      return;
-    }
-
     passwordForm.reset();
     setIsPasswordDialogOpen(true);
   };
@@ -312,6 +308,16 @@ export function SystemSettingsContent({ mode = "page", tabQuery }: SystemSetting
     setIsUsernameDialogOpen(false);
   };
 
+  const requestVerification = async () => {
+    const response = await fetch("/api/auth/verify-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "request" }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) showErrorMessage(data.error || t("settings.failedVerifyEmail"));
+  };
+
   const handleVerifyEmail = async (values: VerifyCodeFormValues) => {
     const res = await fetch("/api/auth/verify-email", {
       method: "POST",
@@ -328,7 +334,7 @@ export function SystemSettingsContent({ mode = "page", tabQuery }: SystemSetting
       ...prev,
       user: {
         ...prev?.user,
-        emailVerified: new Date().toISOString(),
+        emailVerified: data.user.emailVerified,
       },
     }));
     showSuccessMessage(t("settings.emailVerified"));
@@ -336,11 +342,6 @@ export function SystemSettingsContent({ mode = "page", tabQuery }: SystemSetting
   };
 
   const handleChangePassword = async (values: PasswordFormValues) => {
-    if (!isAdmin) {
-      openNonAdminRestrictionDialog();
-      return;
-    }
-
     const res = await fetch("/api/auth/profile", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -358,8 +359,7 @@ export function SystemSettingsContent({ mode = "page", tabQuery }: SystemSetting
     }
 
     showSuccessMessage(t("settings.passwordUpdated"));
-    setIsPasswordDialogOpen(false);
-    passwordForm.reset();
+    await logOut();
   };
 
   const fetchSystemUsers = useCallback(async () => {
@@ -1087,6 +1087,9 @@ export function SystemSettingsContent({ mode = "page", tabQuery }: SystemSetting
                 )}
               />
               <DialogFooter>
+                <Button type="button" variant="outline" onClick={requestVerification}>
+                  {t("settings.requestVerification")}
+                </Button>
                 <Button type="submit">{t("settings.verifyAction")}</Button>
               </DialogFooter>
             </form>
